@@ -82,8 +82,8 @@ async function doLogin() {
     if (error) safeToast('שגיאה: ' + error.message);
     else closeLoginScreen();
   } else {
-    const { error } = await db.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
-    if (error) safeToast('שגיאה: ' + error.message);
+const redirectTo = window.location.origin + window.location.pathname;
+const { error } = await db.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });    if (error) safeToast('שגיאה: ' + error.message);
     else if (msg) { msg.textContent = '✓ נשלח קישור למייל ' + email; msg.style.display = 'block'; }
   }
 }
@@ -93,8 +93,8 @@ async function signInWithEmailOrPassword() { await doLogin(); }
 async function signInWithEmail(email) {
   if (!db) { safeToast('Supabase לא זמין'); return; }
   if (!email?.includes('@')) { safeToast('נא להכניס אימייל תקין'); return; }
-  const { error } = await db.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
-  if (error) safeToast('שגיאה: ' + error.message);
+const redirectTo = window.location.origin + window.location.pathname;
+const { error } = await db.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });  if (error) safeToast('שגיאה: ' + error.message);
   else safeToast('✓ נשלח קישור למייל ' + email);
 }
 

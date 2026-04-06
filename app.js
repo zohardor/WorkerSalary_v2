@@ -10,9 +10,10 @@ let appData = {
 
 let calState = {
   year: new Date().getFullYear(),
-  month: new Date().getMonth(), // 0-based
+  month: new Date().getMonth(),
   workedShabbats: new Set(),
-  workedHolidays: new Set()
+  workedHolidays: new Set(),
+  customVacDays:  new Set()   // ימי חופשה ידניים
 };
 
 // ─────────────── INIT ───────────────
@@ -278,6 +279,7 @@ function openMonthModal(key = null, pdfOnly = false) {
     calState.month = mo - 1;
     calState.workedShabbats = new Set(m.shabbats || []);
     calState.workedHolidays = new Set(m.holidays || []);
+    calState.customVacDays  = new Set(m.customVacDays || []);
   } else {
     document.getElementById('editing-month-key').value = '';
     document.getElementById('modal-title-text').textContent = pdfOnly ? 'בחר חודש לדוח PDF' : 'הוספת חודש חדש';
@@ -287,6 +289,7 @@ function openMonthModal(key = null, pdfOnly = false) {
     calState.month = now.getMonth();
     calState.workedShabbats = new Set();
     calState.workedHolidays = new Set();
+    calState.customVacDays  = new Set();
     const monthStr = calState.year + '-' + String(calState.month + 1).padStart(2,'0');
     setV('m-month', monthStr);
     setV('m-base', appData.worker.baseSalary || '');
@@ -313,7 +316,8 @@ function saveMonth() {
     vacDays: parseInt(v('m-vac-days')) || 0,
     notes: v('m-notes'),
     shabbats: [...calState.workedShabbats],
-    holidays: [...calState.workedHolidays]
+    holidays: [...calState.workedHolidays],
+    customVacDays: [...calState.customVacDays],
   };
   saveLocal();
   renderMonthsList();
@@ -368,20 +372,23 @@ function renderCalendar() {
     const isHol = !!holInfo;
     const workedSab = calState.workedShabbats.has(dateStr);
     const workedHol = calState.workedHolidays.has(dateStr);
+    const isCustomVac = calState.customVacDays.has(dateStr);
     const isToday = dateStr === today;
 
     let cls = 'cal-day';
-    if (workedSab) cls += ' shabbat-worked';
+    if (workedSab)    cls += ' shabbat-worked';
     else if (workedHol) cls += ' holiday-worked';
-    else if (isSat) cls += ' is-shabbat';
-    else if (isHol) cls += ' is-holiday';
+    else if (isCustomVac) cls += ' custom-vac';
+    else if (isSat)   cls += ' is-shabbat';
+    else if (isHol)   cls += ' is-holiday';
     if (isToday) cls += ' today';
 
-    const dot = isHol && !workedSab ? '<div class="hol-dot"></div>' : '';
-    const title = isHol ? holInfo.name : (isSat ? 'שבת' : '');
+    const dot = isHol && !workedSab && !isCustomVac ? '<div class="hol-dot"></div>' : '';
+    const vacDot = isCustomVac ? '<div class="vac-dot">🗓</div>' : '';
+    const title = isCustomVac ? 'חג מותאם אישית' : (isHol ? holInfo.name : (isSat ? 'שבת' : ''));
 
     html += `<div class="${cls}" onclick="toggleDay('${dateStr}', ${isSat}, ${isHol})" title="${title}">
-      ${d}${dot}
+      ${d}${dot}${vacDot}
     </div>`;
   }
 
@@ -396,13 +403,27 @@ function toggleDay(dateStr, isSat, isHol) {
   } else if (isHol) {
     if (calState.workedHolidays.has(dateStr)) calState.workedHolidays.delete(dateStr);
     else calState.workedHolidays.add(dateStr);
+  } else {
+    // יום רגיל — toggle חג מותאם אישית (נספר בחגים)
+    if (calState.customVacDays.has(dateStr)) {
+      calState.customVacDays.delete(dateStr);
+    } else {
+      calState.customVacDays.add(dateStr);
+    }
   }
   renderCalendar();
+  updateCustomVacDisplay();
+}
+
+function updateCustomVacDisplay() {
+  const count = calState.customVacDays.size;
+  const el = document.getElementById('custom-vac-count');
+  if (el) el.textContent = count;
 }
 
 function updateSummary() {
   const nSab = calState.workedShabbats.size;
-  const nHol = calState.workedHolidays.size;
+  const nHol = calState.workedHolidays.size + calState.customVacDays.size;
   const w = appData.worker;
   const base = parseFloat(v('m-base')) || parseFloat(w.baseSalary) || 0;
   const sabBonus = parseFloat(w.shabbatBonus) || 0;

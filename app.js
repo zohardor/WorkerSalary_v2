@@ -846,10 +846,17 @@ function calcTermination() {
 
   const start  = new Date(startDate);
   const end    = new Date(endDate);
-  const msYear = 1000 * 60 * 60 * 24 * 365.25;
-  const years  = (end - start) / msYear;
 
-  if (years < 0) { toast('תאריך סיום לפני תאריך התחלה'); return; }
+  // חישוב מדויק של שנים לפי תאריך (לא ms)
+  let years = end.getFullYear() - start.getFullYear();
+  const monthDiff = end.getMonth() - start.getMonth();
+  const dayDiff   = end.getDate()  - start.getDate();
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) years--;
+  const remainMonths = ((end.getFullYear() * 12 + end.getMonth()) -
+                        (start.getFullYear() * 12 + start.getMonth()));
+  const exactYears = remainMonths / 12 + (dayDiff >= 0 ? 0 : -1/365);
+
+  if (exactYears < 0) { toast('תאריך סיום לפני תאריך התחלה'); return; }
 
   const dailySalary = salary / 25;
   const rows = [];
@@ -857,17 +864,17 @@ function calcTermination() {
 
   // 1. פיצויי פיטורים (רק בפיטורים / הסכמה)
   if (reason !== 'resigned') {
-    const severance = salary * years;
-    rows.push({ label: `פיצויי פיטורים (${years.toFixed(2)} שנים × ₪${salary.toLocaleString()})`, amount: severance, color: 'var(--danger)' });
+    const severance = salary * exactYears;
+    rows.push({ label: `פיצויי פיטורים (${exactYears.toFixed(2)} שנים × ₪${salary.toLocaleString()})`, amount: severance, color: 'var(--danger)' });
     total += severance;
   }
 
   // 2. הודעה מוקדמת
-  const noticeMonths = Math.min(Math.floor(years), 6);
+  const noticeMonths = Math.min(Math.floor(exactYears), 6);
   if (noticeMonths > 0) {
-    const noticePay = salary * noticeMonths / 12 * 12;
-    rows.push({ label: `הודעה מוקדמת (${noticeMonths} חודשים)`, amount: salary * noticeMonths, color: 'var(--warn)' });
-    total += salary * noticeMonths;
+    const noticePay = salary * noticeMonths;
+    rows.push({ label: `הודעה מוקדמת (${noticeMonths} חודשים)`, amount: noticePay, color: 'var(--warn)' });
+    total += noticePay;
   }
 
   // 3. פדיון חופשה
@@ -878,8 +885,9 @@ function calcTermination() {
   }
 
   // 4. הבראה יחסית לשנה האחרונה
-  const lastYearFraction = years - Math.floor(years);
-  if (lastYearFraction > 0) {
+  const fullYears = Math.floor(exactYears);
+  const lastYearFraction = exactYears - fullYears;
+  if (lastYearFraction > 0.01) {
     const havraRate = appData.rates?.havraRate || 378;
     const havraDays = calcHavraDays(startDate);
     const havraPro  = havraRate * havraDays * lastYearFraction;
@@ -906,7 +914,7 @@ function calcTermination() {
   setText('term-total', '₪' + total.toLocaleString('he-IL', {maximumFractionDigits:0}));
   document.getElementById('termination-result').style.display = 'block';
   document.getElementById('termination-placeholder').style.display = 'none';
-  window._termData = { rows, total, years, startDate, endDate, reason, salary };
+  window._termData = { rows, total, years: exactYears, startDate, endDate, reason, salary };
 }
 
 function generateTerminationPDF() {

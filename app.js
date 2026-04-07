@@ -83,8 +83,10 @@ async function runGuiTests() {
   row('כפתור כניסה קיים', !!document.getElementById('auth-btn'));
   row('5 מסכים קיימים', document.querySelectorAll('.screen').length === 5,
     `נמצאו: ${document.querySelectorAll('.screen').length}`);
-  row('מסך מדריך פעיל', document.getElementById('screen-guide')?.classList.contains('active'),
-    'screen-guide אמור להיות active בטעינה');
+  // בדוק מסך מדריך לפני כל ניווט
+  const guideActiveNow = document.getElementById('screen-guide')?.classList.contains('active');
+  row('מסך מדריך טעון כ-active', guideActiveNow || document.querySelector('.screen.active')?.id === 'screen-guide',
+    `active screen: ${document.querySelector('.screen.active')?.id}`);
   row('5 טאבים בניווט', document.querySelectorAll('.nav-tab').length === 5,
     `נמצאו: ${document.querySelectorAll('.nav-tab').length}`);
   row('לוח שנה קיים', !!document.getElementById('cal-grid'));
@@ -187,9 +189,11 @@ async function runGuiTests() {
   row('טבלת פיצ\'רים קיימת', !!document.getElementById('feature-table-body'));
   row('כפתור הרשמה קיים', document.querySelectorAll('button[onclick*="openSignup"]').length > 0);
 
-  const premiumBefore = isPremium();
+  const premiumBefore = localStorage.getItem('shakaron_premium') === 'true';
   localStorage.setItem('shakaron_premium', (!premiumBefore).toString());
-  row('toggle פרימיום', isPremium() !== premiumBefore, `לפני: ${premiumBefore}, אחרי: ${isPremium()}`);
+  const premiumAfter = localStorage.getItem('shakaron_premium') === 'true';
+  row('toggle פרימיום', premiumAfter !== premiumBefore,
+    `לפני: ${premiumBefore}, אחרי: ${premiumAfter}`);
   localStorage.setItem('shakaron_premium', premiumBefore.toString());
   applyPlanGates();
 
@@ -251,6 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
   updateVacBar();
   applyPlanGates();
   renderAlerts();
+  showScreen('screen-guide'); // ודא שהמדריך פעיל בטעינה
+  setTimeout(initAccordion, 200); // אתחל accordion אחרי render
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }

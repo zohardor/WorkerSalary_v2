@@ -16,6 +16,232 @@ let calState = {
   customVacDays:  new Set()   // ימי חופשה ידניים
 };
 
+// ─────────────── GUI TEST PANEL ───────────────
+// פתיחה: Ctrl+Shift+T בדפדפן
+
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+    e.preventDefault();
+    toggleGuiTests();
+  }
+});
+
+function toggleGuiTests() {
+  let panel = document.getElementById('gui-test-panel');
+  if (!panel) {
+    panel = createGuiTestPanel();
+    document.body.appendChild(panel);
+  }
+  panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+}
+
+function createGuiTestPanel() {
+  const panel = document.createElement('div');
+  panel.id = 'gui-test-panel';
+  panel.style.cssText = `
+    position:fixed;inset:0;z-index:9999;background:rgba(15,17,23,0.97);
+    display:flex;flex-direction:column;direction:rtl;font-family:'Heebo',sans-serif;
+  `;
+  panel.innerHTML = `
+    <div style="padding:16px 20px;border-bottom:1px solid #2d3352;display:flex;align-items:center;gap:12px;">
+      <div style="font-size:20px;font-weight:900;background:linear-gradient(135deg,#5b7fff,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">שכרון ✦ GUI Tests</div>
+      <div id="gt-summary" style="font-size:13px;color:#5a6280;">לחץ הרץ...</div>
+      <button onclick="runGuiTests()" style="margin-right:auto;padding:8px 20px;background:#5b7fff;color:#fff;border:none;border-radius:8px;font-family:'Heebo',sans-serif;font-weight:700;cursor:pointer;">▶ הרץ</button>
+      <button onclick="toggleGuiTests()" style="padding:8px 14px;background:#1a1f2e;color:#9ba4c0;border:1px solid #2d3352;border-radius:8px;font-family:'Heebo',sans-serif;cursor:pointer;">✕ סגור</button>
+    </div>
+    <div id="gt-results" style="flex:1;overflow-y:auto;padding:16px 20px;"></div>
+  `;
+  return panel;
+}
+
+async function runGuiTests() {
+  const out = document.getElementById('gt-results');
+  const summary = document.getElementById('gt-summary');
+  out.innerHTML = '';
+  let pass = 0, fail = 0;
+
+  function row(name, ok, detail='') {
+    if (ok) pass++; else fail++;
+    out.innerHTML += `
+      <div style="display:flex;gap:10px;padding:9px 14px;background:#1a1f2e;border-radius:8px;margin-bottom:6px;border-right:3px solid ${ok?'#34d399':'#f87171'};">
+        <span style="font-size:15px;">${ok?'✅':'❌'}</span>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#e8eaf6;">${name}</div>
+          ${detail ? `<div style="font-size:12px;color:#5a6280;margin-top:2px;">${detail}</div>` : ''}
+        </div>
+      </div>`;
+    summary.textContent = `✅ ${pass} | ❌ ${fail}`;
+  }
+
+  function hdr(title) {
+    out.innerHTML += `<div style="font-size:12px;font-weight:700;color:#5a6280;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px;">${title}</div>`;
+  }
+
+  // ── מבנה DOM ──────────────────────────────────
+  hdr('🏗 מבנה DOM');
+  row('top-bar קיים', !!document.querySelector('.top-bar'));
+  row('כפתור כניסה קיים', !!document.getElementById('auth-btn'));
+  row('5 מסכים קיימים', document.querySelectorAll('.screen').length === 5,
+    `נמצאו: ${document.querySelectorAll('.screen').length}`);
+  row('מסך מדריך פעיל', document.getElementById('screen-guide')?.classList.contains('active'),
+    'screen-guide אמור להיות active בטעינה');
+  row('5 טאבים בניווט', document.querySelectorAll('.nav-tab').length === 5,
+    `נמצאו: ${document.querySelectorAll('.nav-tab').length}`);
+  row('לוח שנה קיים', !!document.getElementById('cal-grid'));
+  row('שדות עובדת קיימים', !!document.getElementById('w-name') && !!document.getElementById('w-passport'));
+  row('מסך כניסה קיים', !!document.getElementById('screen-login'));
+
+  // ── ניווט בין מסכים ───────────────────────────
+  hdr('🧭 ניווט');
+
+  const screens = ['screen-worker','screen-salary','screen-guide','screen-premium'];
+  for (const sid of screens) {
+    showScreen(sid);
+    await new Promise(r => setTimeout(r, 50));
+    const active = document.getElementById(sid)?.classList.contains('active');
+    row(`מעבר ל-${sid}`, active);
+  }
+  showScreen('screen-guide'); // חזור למדריך
+
+  // ── פרטי עובדת ────────────────────────────────
+  hdr('👤 פרטי עובדת');
+
+  showScreen('screen-worker');
+  await new Promise(r => setTimeout(r, 100));
+
+  const nameEl = document.getElementById('w-name');
+  const prevName = nameEl?.value || '';
+  if (nameEl) {
+    nameEl.value = 'בדיקה GUI';
+    nameEl.dispatchEvent(new Event('input'));
+    await new Promise(r => setTimeout(r, 100));
+    row('הזנת שם עובדת', appData.worker?.name === 'בדיקה GUI',
+      `appData.worker.name = "${appData.worker?.name}"`);
+    nameEl.value = prevName;
+    nameEl.dispatchEvent(new Event('input'));
+  } else {
+    row('הזנת שם עובדת', false, 'w-name לא נמצא');
+  }
+
+  const baseEl = document.getElementById('w-base');
+  if (baseEl) {
+    const prev = baseEl.value;
+    baseEl.value = '7500';
+    baseEl.dispatchEvent(new Event('input'));
+    await new Promise(r => setTimeout(r, 100));
+    row('הזנת שכר בסיס', parseFloat(appData.worker?.baseSalary) === 7500,
+      `baseSalary = ${appData.worker?.baseSalary}`);
+    baseEl.value = prev;
+    baseEl.dispatchEvent(new Event('input'));
+  }
+
+  // ── ניהול חודשי ───────────────────────────────
+  hdr('📅 ניהול חודשי');
+
+  showScreen('screen-salary');
+  await new Promise(r => setTimeout(r, 100));
+
+  const monthsBefore = Object.keys(appData.months).length;
+
+  // פתח מודל חודש
+  openMonthModal();
+  await new Promise(r => setTimeout(r, 100));
+  const modalOpen = document.getElementById('month-modal')?.classList.contains('open');
+  row('פתיחת מודל חודש', modalOpen);
+
+  if (modalOpen) {
+    // הזן נתונים
+    const monthEl = document.getElementById('m-month');
+    if (monthEl) monthEl.value = '2024-11';
+    const baseM = document.getElementById('m-base');
+    if (baseM) { baseM.value = '5500'; baseM.dispatchEvent(new Event('input')); }
+    await new Promise(r => setTimeout(r, 100));
+
+    row('הזנת שכר בחודש', v('m-base') === '5500', `m-base = ${v('m-base')}`);
+    row('חישוב סיכום אוטומטי', !!document.getElementById('sum-total')?.textContent);
+
+    // שמור חודש
+    saveMonthToDb();
+    await new Promise(r => setTimeout(r, 300));
+    const monthsAfter = Object.keys(appData.months).length;
+    row('שמירת חודש', monthsAfter > monthsBefore,
+      `לפני: ${monthsBefore}, אחרי: ${monthsAfter}`);
+
+    // מחק את החודש שיצרנו
+    if (appData.months['2024-11']) {
+      delete appData.months['2024-11'];
+      saveLocal();
+      renderMonthsList();
+      row('מחיקת חודש בדיקה', !appData.months['2024-11']);
+    }
+  } else {
+    closeModal();
+  }
+
+  // ── מסך פרימיום ───────────────────────────────
+  hdr('⭐ פרימיום');
+
+  showScreen('screen-premium');
+  await new Promise(r => setTimeout(r, 100));
+
+  row('טבלת פיצ\'רים קיימת', !!document.getElementById('feature-table-body'));
+  row('כפתור הרשמה קיים', document.querySelectorAll('button[onclick*="openSignup"]').length > 0);
+
+  const premiumBefore = isPremium();
+  localStorage.setItem('shakaron_premium', (!premiumBefore).toString());
+  row('toggle פרימיום', isPremium() !== premiumBefore, `לפני: ${premiumBefore}, אחרי: ${isPremium()}`);
+  localStorage.setItem('shakaron_premium', premiumBefore.toString());
+  applyPlanGates();
+
+  // ── מסך כניסה ─────────────────────────────────
+  hdr('🔐 מסך כניסה');
+
+  const loginScreen = document.getElementById('screen-login');
+  row('מסך כניסה קיים', !!loginScreen);
+
+  showLoginScreen();
+  await new Promise(r => setTimeout(r, 100));
+  row('פתיחת מסך כניסה', loginScreen?.style.display !== 'none');
+
+  closeLoginScreen();
+  await new Promise(r => setTimeout(r, 100));
+  row('סגירת מסך כניסה', loginScreen?.style.display === 'none');
+
+  row('שדה מייל בכניסה', !!document.getElementById('login-email'));
+  row('שדה סיסמה בכניסה', !!document.getElementById('login-password'));
+  row('כפתור כניסה קיים', !!document.querySelector('button[onclick*="doLogin"]'));
+
+  // ── פונקציות קריטיות ──────────────────────────
+  hdr('⚙️ פונקציות קריטיות');
+
+  row('showScreen', typeof showScreen === 'function');
+  row('saveWorkerToDb', typeof saveWorkerToDb === 'function');
+  row('saveMonthToDb', typeof saveMonthToDb === 'function');
+  row('generatePDF', typeof generatePDF === 'function');
+  row('calcTermination', typeof calcTermination === 'function');
+  row('calcHavraDays', typeof calcHavraDays === 'function');
+  row('isPremium', typeof isPremium === 'function');
+  row('renderAlerts', typeof renderAlerts === 'function');
+  row('initAccordion', typeof initAccordion === 'function');
+  row('syncAllToCloud', typeof syncAllToCloud === 'function');
+
+  // ── נתוני State ────────────────────────────────
+  hdr('📊 State');
+
+  row('appData קיים', typeof appData === 'object');
+  row('appData.worker קיים', typeof appData.worker === 'object');
+  row('appData.months קיים', typeof appData.months === 'object');
+  row('appData.rates קיים', typeof appData.rates === 'object');
+  row('calState קיים', typeof calState === 'object');
+  row('calState.workedShabbats הוא Set', calState.workedShabbats instanceof Set);
+
+  // חזור למדריך
+  showScreen('screen-guide');
+
+  summary.textContent = `✅ ${pass} עברו | ❌ ${fail} נכשלו`;
+  summary.style.color = fail > 0 ? '#f87171' : '#34d399';
+}
+
 // ─────────────── INIT ───────────────
 document.addEventListener('DOMContentLoaded', () => {
   loadLocal();

@@ -20,7 +20,7 @@ let calState = {
 // פתיחה: Ctrl+Shift+T בדפדפן
 
 document.addEventListener('keydown', e => {
-  if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+  if (e.ctrlKey && e.shiftKey && e.key === 'Q') {
     e.preventDefault();
     toggleGuiTests();
   }

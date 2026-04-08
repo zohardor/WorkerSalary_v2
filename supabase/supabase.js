@@ -26,7 +26,10 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     db.auth.getSession().then(({ data: { session } }) => {
-      if (!session) showLoginScreen();
+      if (!session) {
+        // הצג מסך כניסה רק אם לא מחובר — המדריך נשאר ב-background
+        setTimeout(showLoginScreen, 300);
+      }
     });
 
   } catch(e) {
@@ -43,6 +46,11 @@ function showLoginScreen() {
 function closeLoginScreen() {
   const s = document.getElementById('screen-login');
   if (s) s.style.display = 'none';
+  // ודא שמסך המדריך פעיל אחרי סגירת הכניסה
+  if (typeof showScreen === 'function') {
+    const active = document.querySelector('.screen.active');
+    if (!active) showScreen('screen-guide');
+  }
 }
 
 function updateAuthUI() {
@@ -82,8 +90,8 @@ async function doLogin() {
     if (error) safeToast('שגיאה: ' + error.message);
     else closeLoginScreen();
   } else {
-const redirectTo = window.location.origin + window.location.pathname;
-const { error } = await db.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });    if (error) safeToast('שגיאה: ' + error.message);
+    const { error } = await db.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
+    if (error) safeToast('שגיאה: ' + error.message);
     else if (msg) { msg.textContent = '✓ נשלח קישור למייל ' + email; msg.style.display = 'block'; }
   }
 }
@@ -93,8 +101,8 @@ async function signInWithEmailOrPassword() { await doLogin(); }
 async function signInWithEmail(email) {
   if (!db) { safeToast('Supabase לא זמין'); return; }
   if (!email?.includes('@')) { safeToast('נא להכניס אימייל תקין'); return; }
-const redirectTo = window.location.origin + window.location.pathname;
-const { error } = await db.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });  if (error) safeToast('שגיאה: ' + error.message);
+  const { error } = await db.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
+  if (error) safeToast('שגיאה: ' + error.message);
   else safeToast('✓ נשלח קישור למייל ' + email);
 }
 
@@ -159,6 +167,7 @@ async function onUserLoggedIn() {
 
     if (workers?.length > 0) {
       currentWorker = workers[0];
+      localStorage.setItem('shakaron_worker_id', currentWorker.id);
       await loadWorkerData(currentWorker.id);
       console.log('✓ Worker loaded:', currentWorker.name);
     } else {
@@ -228,7 +237,10 @@ async function saveWorkerToDb() {
   }
 
   if (result?.error) { console.error('Worker save error:', result.error.message); return; }
-  if (result?.data) currentWorker = result.data;
+  if (result?.data) {
+    currentWorker = result.data;
+    localStorage.setItem('shakaron_worker_id', currentWorker.id);
+  }
 }
 
 function workerFromDb(row) {
@@ -303,7 +315,14 @@ async function saveMonthToDb() {
   closeModal();
   safeToast('החודש נשמר ✓');
 
-  if (!db || !currentWorker?.id) return;
+  if (!db) return;
+
+  // טען currentWorker אם חסר
+  if (!currentWorker?.id) {
+    const cachedId = localStorage.getItem('shakaron_worker_id');
+    if (cachedId) currentWorker = { id: cachedId };
+  }
+  if (!currentWorker?.id) return;
 
   const { error } = await db.from('months').upsert({
     worker_id: currentWorker.id,
@@ -322,19 +341,50 @@ async function saveMonthToDb() {
 
 async function deleteMonthFromDb(key) {
   if (!key) key = document.getElementById('editing-month-key')?.value;
-  if (!key || !appData.months[key]) return;
+  if (!key) return;
   if (!confirm('למחוק את חודש ' + key + '?')) return;
 
-  delete appData.months[key];
-  saveLocal();
-  renderMonthsList();
-  updateWorkerStats();
-  updateVacBar();
+  // מחק מקומית אם קיים
+  if (appData.months[key]) {
+    delete appData.months[key];
+    saveLocal();
+    renderMonthsList();
+    updateWorkerStats();
+    updateVacBar();
+  }
   closeModal();
   safeToast('החודש נמחק');
 
-  if (!db || !currentWorker?.id) return;
-  await db.from('months').delete().eq('worker_id', currentWorker.id).eq('month_key', key);
+  if (!db) return;
+
+  // אם אין currentWorker — נסה מה-localStorage
+  if (!currentWorker?.id) {
+    const cachedId = localStorage.getItem('shakaron_worker_id');
+    if (cachedId) currentWorker = { id: cachedId };
+  }
+
+  // אם עדיין אין — נסה לטעון לפי passport
+  if (!currentWorker?.id && appData.worker?.passport) {
+    const { data: w } = await db.from('workers')
+      .select('id').eq('passport', appData.worker.passport).maybeSingle();
+    if (w) {
+      currentWorker = w;
+      localStorage.setItem('shakaron_worker_id', w.id);
+    }
+  }
+
+  if (!currentWorker?.id) {
+    console.warn('deleteMonthFromDb: no currentWorker, deleted locally only');
+    return;
+  }
+
+  const { error } = await db.from('months')
+    .delete()
+    .eq('worker_id', currentWorker.id)
+    .eq('month_key', key);
+
+  if (error) console.error('Delete month error:', error.message);
+  else console.log('✓ Month deleted from DB:', key);
 }
 
 // ── LOAD DATA ─────────────────────────────────────────────────

@@ -380,15 +380,22 @@ function populateWorkerForm() {
 }
 
 // ימי חג שנוצלו = חגים שעבדה בהם (מחושב אוטומטית)
-function calcHolUsed() {
+function calcHolUsed(year = null) {
+  // מחשב ניצול ימי חג לפי שנה (ברירת מחדל: השנה הנוכחית)
+  const targetYear = year || new Date().getFullYear();
   let total = 0;
-  for (const [, m] of Object.entries(appData.months)) {
+  for (const [key, m] of Object.entries(appData.months)) {
+    const monthYear = parseInt(key.split('-')[0]);
+    if (monthYear !== targetYear) continue;
     total += (m.holidays || []).length;
+    total += (m.customVacDays || []).length; // תיקון 1: חגים מותאמים נספרים
   }
-  return total;
+  // תיקון 4: לא יותר מ-holTotal
+  const holTotal = appData.worker?.holTotal || 0;
+  return holTotal > 0 ? Math.min(total, holTotal) : total;
 }
 
-// ימי חופשה שנוצלו = ימים ידניים שהוזנו בכל חודש
+// ימי חופשה שנוצלו — מצטברים לפי שנת עבודה (לא שנה קלנדרית)
 function calcTotalVacUsed() {
   let total = 0;
   for (const [, m] of Object.entries(appData.months)) {
@@ -397,32 +404,53 @@ function calcTotalVacUsed() {
   return total;
 }
 
+// ימי חג שנוצלו השנה (מאפס כל שנה קלנדרית)
+function calcHolUsedThisYear() {
+  return calcHolUsed(new Date().getFullYear());
+}
+
+// ימי חופשה שנותרו (מצטבר — ימים שלא נוצלו עוברים לשנה הבאה)
+function calcVacLeft() {
+  const startDate = appData.worker?.startDate;
+  const vacPerYear = appData.worker?.vacTotal || 0;
+  if (!startDate || !vacPerYear) return Math.max(0, vacPerYear - calcTotalVacUsed());
+  
+  // חשב כמה שנות עבודה עברו
+  const start = new Date(startDate);
+  const now = new Date();
+  const yearsWorked = Math.floor((now - start) / (1000 * 60 * 60 * 24 * 365.25)) + 1;
+  const totalEntitled = vacPerYear * Math.min(yearsWorked, 10); // מגביל ל-10 שנים
+  const totalUsed = calcTotalVacUsed();
+  return Math.max(0, totalEntitled - totalUsed);
+}
+
 function updateWorkerStats() {
   const w = appData.worker;
   setText('stat-name', w.name || '—');
   setText('stat-base', w.baseSalary ? '₪' + Number(w.baseSalary).toLocaleString() : '₪0');
 
-  // ימי חג
-  const holUsed = calcHolUsed();
+  // ימי חג — מאפס כל שנה קלנדרית
+  const currentYear = new Date().getFullYear();
+  const holUsed  = calcHolUsed(currentYear);
   const holTotal = w.holTotal || 0;
-  const holLeft = Math.max(0, holTotal - holUsed);
-  setText('stat-hol-left', holLeft);
-  setText('stat-hol-used', holUsed);
+  const holLeft  = Math.max(0, holTotal - holUsed);
+  setText('stat-hol-left',  holLeft);
+  setText('stat-hol-used',  holUsed);
   setText('stat-hol-total', holTotal);
   setText('hol-total-disp', holTotal);
-  setText('hol-used-disp', holUsed);
-  setText('hol-left-disp', holLeft);
+  setText('hol-used-disp',  holUsed);
+  setText('hol-left-disp',  holLeft);
 
-  // ימי חופשה
+  // ימי חופשה — מצטבר לפי שנות עבודה
   const vacUsed = calcTotalVacUsed();
+  const vacLeft = calcVacLeft();
   const vacTotal = w.vacTotal || 0;
-  const vacLeft = Math.max(0, vacTotal - vacUsed);
-  setText('stat-vac-left', vacLeft);
-  setText('stat-vac-used', vacUsed);
+  setText('stat-vac-left',      vacLeft);
+  setText('stat-vac-used',      vacUsed);
   setText('stat-vac-total-top', vacTotal);
-  setText('vac-total-disp', vacTotal);
-  setText('vac-used-disp', vacUsed);
-  setText('vac-left-disp', vacLeft);
+  setText('vac-total-disp',     vacTotal);
+  setText('vac-used-disp',      vacUsed);
+  setText('vac-left-disp',      vacLeft);
 }
 
 function updateVacBar() {
@@ -502,10 +530,11 @@ function openMonthModal(key = null, pdfOnly = false) {
     document.getElementById('modal-title-text').textContent = 'עריכת חודש';
     document.getElementById('delete-month-btn').style.display = 'inline-flex';
     setV('m-month', key);
-    setV('m-base', m.base);
+    setV('m-base',     m.base);
     setV('m-expenses', m.expenses || 0);
-    setV('m-vac-days', m.vacDays || 0);
-    setV('m-notes', m.notes || '');
+    setV('m-havra',    m.havra    || 0);
+    setV('m-vac-days', m.vacDays  || 0);
+    setV('m-notes',    m.notes    || '');
     const [yr, mo] = key.split('-').map(Number);
     calState.year = yr;
     calState.month = mo - 1;
@@ -657,11 +686,12 @@ function updateSummary() {
   const nSab = calState.workedShabbats.size;
   const nHol = calState.workedHolidays.size + calState.customVacDays.size;
   const w = appData.worker;
-  const base = parseFloat(v('m-base')) || parseFloat(w.baseSalary) || 0;
-  const sabBonus = parseFloat(w.shabbatBonus) || 0;
-  const holBonus = parseFloat(w.holidayBonus) || 0;
-  const exp = parseFloat(v('m-expenses')) || 0;
-  const total = base + nSab * sabBonus + nHol * holBonus + exp;
+  const base     = parseFloat(v('m-base'))     || parseFloat(w.baseSalary) || 0;
+  const sabBonus = parseFloat(w.shabbatBonus)  || 0;
+  const holBonus = parseFloat(w.holidayBonus)  || 0;
+  const exp      = parseFloat(v('m-expenses')) || 0;
+  const havra    = parseFloat(v('m-havra'))    || 0;
+  const total    = base + nSab * sabBonus + nHol * holBonus + exp + havra;
 
   setText('sum-shabbat', nSab);
   setText('sum-holidays', nHol);
@@ -686,9 +716,10 @@ function generatePDF() {
   const nHol     = calState.workedHolidays.size;
   const base     = parseFloat(v('m-base'))     || 0;
   const exp      = parseFloat(v('m-expenses')) || 0;
+  const havra    = parseFloat(v('m-havra'))    || 0;
   const sabBonus = parseFloat(w.shabbatBonus)  || 0;
   const holBonus = parseFloat(w.holidayBonus)  || 0;
-  const gross    = base + nSab * sabBonus + nHol * holBonus + exp;
+  const gross    = base + nSab * sabBonus + nHol * holBonus + exp + havra;
 
   const bituachAmt  = (base * (r.bituach || 0)) / 100;
   const pensionAmt  = (base * (r.pension  || 0)) / 100;
@@ -702,19 +733,21 @@ function generatePDF() {
   for (let i = 0; i < firstDay; i++) calCells += '<div></div>';
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = `${yr}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isSat   = isShabbat(ds);
-    const holInfo = getHolidayInfo(ds, nationalities);
-    const wSab    = calState.workedShabbats.has(ds);
-    const wHol    = calState.workedHolidays.has(ds);
+    const isSat      = isShabbat(ds);
+    const holInfo    = getHolidayInfo(ds, nationalities);
+    const wSab       = calState.workedShabbats.has(ds);
+    const wHol       = calState.workedHolidays.has(ds);
+    const wCustomHol = calState.customVacDays.has(ds);  // תיקון 2
     let cls = 'day';
-    if      (wSab)   cls += ' wsab';
-    else if (wHol)   cls += ' whol';
-    else if (isSat)  cls += ' sat';
-    else if (holInfo) cls += ' hol';
-    calCells += `<div class="${cls}">${d}</div>`;
+    if      (wSab)        cls += ' wsab';
+    else if (wHol)        cls += ' whol';
+    else if (wCustomHol)  cls += ' wcustom';  // חג מותאם
+    else if (isSat)       cls += ' sat';
+    else if (holInfo)     cls += ' hol';
+    calCells += `<div class="${cls}" title="${wCustomHol ? 'חג מותאם' : (holInfo?.name || '')}">${d}</div>`;
   }
 
-  const holUsed = calcHolUsed();
+  const holUsed = calcHolUsed(parseInt(yr));
   const vacUsed = calcTotalVacUsed();
   const seniorityText = calcSeniorityText(w.startDate);
 
@@ -745,6 +778,7 @@ function generatePDF() {
   table.pay td:last-child{text-align:left;font-weight:600}
   tr.shab td{color:#e65100;background:#fff8f0}
   tr.holr td{color:#5e35b1;background:#f9f7ff}
+  tr.havrar td{color:#0277bd;background:#e1f5fe}
   tr.gross-row td{background:#eff6ff;font-weight:700;color:#1d4ed8;font-size:14px}
   tr.total-row td{background:#5b7fff;color:#fff;font-weight:900;font-size:15px}
   tr.cost-row td{color:#555;font-size:12px}
@@ -754,6 +788,7 @@ function generatePDF() {
   .day{text-align:center;padding:5px 2px;border-radius:5px;font-size:11px;border:1px solid #eee;min-height:26px}
   .wsab{background:#fff3e0;color:#e65100;border-color:#f97316;font-weight:700}
   .whol{background:#ede7f6;color:#5e35b1;border-color:#818cf8;font-weight:700}
+  .wcustom{background:#e8f5e9;color:#2e7d32;border-color:#66bb6a;font-weight:700}
   .sat{color:#f97316;border-color:#ffe0cc}
   .hol{color:#818cf8;border-color:#e0e0ff}
   .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:#555;margin-bottom:16px}
@@ -814,7 +849,8 @@ function generatePDF() {
   <tr><td>שכר בסיס / Base Salary</td><td>₪${base.toLocaleString()}</td></tr>
   ${nSab ? `<tr class="shab"><td>תוספת שבת / Shabbat (${nSab}×₪${sabBonus})</td><td>₪${(nSab*sabBonus).toLocaleString()}</td></tr>` : ''}
   ${nHol ? `<tr class="holr"><td>תוספת חג / Holiday (${nHol}×₪${holBonus})</td><td>₪${(nHol*holBonus).toLocaleString()}</td></tr>` : ''}
-  ${exp  ? `<tr><td>החזר הוצאות / Expenses</td><td>₪${exp.toLocaleString()}</td></tr>` : ''}
+  ${exp   ? `<tr><td>החזר הוצאות / Expenses</td><td>₪${exp.toLocaleString()}</td></tr>` : ''}
+  ${havra ? `<tr class="havrar"><td>הבראה / Recreation</td><td>₪${havra.toLocaleString()}</td></tr>` : ''}
   <tr class="total-row"><td>סה"כ לעובדת / Total to Employee</td><td>₪${gross.toLocaleString()}</td></tr>
 </table>
 <div class="section-title">🏢 הוצאות מעסיק / Employer Costs</div>
@@ -1051,18 +1087,15 @@ function checkHavraAlert() {
   }
 }
 
-// הוסף הבראה לשדה ה-notes ולסכום החודשי
+// הוסף הבראה לשדה הבראה הייעודי
 function addHavraToMonth() {
   const rate  = appData.rates?.havraRate || 378;
   const days  = calcHavraDays(appData.worker?.startDate);
   const total = days * rate;
-  const notes = v('m-notes');
-  setV('m-notes', (notes ? notes + ' | ' : '') + `הבראה ${days} ימים ₪${total.toLocaleString()}`);
-  const expenses = parseFloat(v('m-expenses')) || 0;
-  setV('m-expenses', expenses + total);
+  setV('m-havra', total);
   updateSummary();
   renderModalEmployerCosts();
-  toast(`✓ הבראה ₪${total.toLocaleString()} נוספה להחזר הוצאות`);
+  toast(`✓ הבראה ₪${total.toLocaleString()} נוספה`);
   document.getElementById('havra-alert').style.display = 'none';
 }
 // ─────────────── TERMINATION REPORT (דוח סיום) ───────────────

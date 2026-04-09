@@ -299,12 +299,14 @@ async function saveMonthToDb() {
   if (!key) { safeToast('בחר חודש'); return; }
 
   const monthObj = {
-    base:     parseFloat(v('m-base'))     || 0,
-    expenses: parseFloat(v('m-expenses')) || 0,
-    vacDays:  parseInt(v('m-vac-days'))   || 0,
-    notes:    v('m-notes'),
-    shabbats: [...calState.workedShabbats],
-    holidays: [...calState.workedHolidays],
+    base:         parseFloat(v('m-base'))     || 0,
+    expenses:     parseFloat(v('m-expenses')) || 0,
+    havra:        parseFloat(v('m-havra'))    || 0,
+    vacDays:      parseInt(v('m-vac-days'))   || 0,
+    notes:        v('m-notes'),
+    shabbats:     [...calState.workedShabbats],
+    holidays:     [...calState.workedHolidays],
+    customVacDays:[...calState.customVacDays],
   };
 
   appData.months[key] = monthObj;
@@ -325,14 +327,16 @@ async function saveMonthToDb() {
   if (!currentWorker?.id) return;
 
   const { error } = await db.from('months').upsert({
-    worker_id: currentWorker.id,
-    month_key: key,
-    base:      monthObj.base,
-    expenses:  monthObj.expenses,
-    vac_days:  monthObj.vacDays,
-    notes:     monthObj.notes,
-    shabbats:  monthObj.shabbats,
-    holidays:  monthObj.holidays,
+    worker_id:  currentWorker.id,
+    month_key:  key,
+    base:       monthObj.base,
+    expenses:   monthObj.expenses,
+    havra:      monthObj.havra,
+    vac_days:   monthObj.vacDays,
+    notes:      monthObj.notes,
+    shabbats:   monthObj.shabbats,
+    holidays:   monthObj.holidays,
+    custom_vac_days: monthObj.customVacDays,
   }, { onConflict: 'worker_id,month_key' });
 
   if (error) console.error('Month save error:', error.message);
@@ -402,9 +406,14 @@ async function loadWorkerData(workerId) {
     appData.months = {};
     (months || []).forEach(m => {
       appData.months[m.month_key] = {
-        base: m.base, expenses: m.expenses,
-        vacDays: m.vac_days, notes: m.notes,
-        shabbats: m.shabbats || [], holidays: m.holidays || [],
+        base:          m.base,
+        expenses:      m.expenses,
+        havra:         m.havra || 0,
+        vacDays:       m.vac_days,
+        notes:         m.notes,
+        shabbats:      m.shabbats      || [],
+        holidays:      m.holidays      || [],
+        customVacDays: m.custom_vac_days || [],
       };
     });
 

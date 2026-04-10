@@ -411,17 +411,41 @@ function calcHolUsedThisYear() {
 
 // ימי חופשה שנותרו (מצטבר — ימים שלא נוצלו עוברים לשנה הבאה)
 function calcVacLeft() {
-  const startDate = appData.worker?.startDate;
+  const startDate  = appData.worker?.startDate;
   const vacPerYear = appData.worker?.vacTotal || 0;
   if (!vacPerYear) return 0;
-  if (!startDate) return Math.max(0, vacPerYear - calcTotalVacUsed());
 
-  // כמה שנות עבודה מלאות עברו (מינימום 1)
-  const start = new Date(startDate);
-  const now = new Date();
-  const yearsWorked = Math.max(1, Math.floor((now - start) / (1000 * 60 * 60 * 24 * 365.25)) + 1);
-  const totalEntitled = vacPerYear * Math.min(yearsWorked, 10);
-  const totalUsed = calcTotalVacUsed();
+  // חשב כמה שנות זכאות קלנדריות עברו מתחילת ההעסקה
+  // לפי שנות קלנדריות — שנת ההתחלה + כל שנה שלמה שעברה
+  let yearsEntitled = 1; // שנה ראשונה תמיד
+  if (startDate) {
+    const startYear = new Date(startDate).getFullYear();
+    const nowYear   = new Date().getFullYear();
+    yearsEntitled   = Math.max(1, nowYear - startYear + 1);
+  }
+
+  const totalEntitled = vacPerYear * Math.min(yearsEntitled, 20);
+  const totalUsed     = calcTotalVacUsed();
+  return Math.max(0, totalEntitled - totalUsed);
+}
+
+// ימי חופשה שנותרו נכון לסוף שנה נתונה
+function calcVacLeftAtEndOfYear(year) {
+  const startDate  = appData.worker?.startDate;
+  const vacPerYear = appData.worker?.vacTotal || 0;
+  if (!vacPerYear) return 0;
+
+  const startYear    = startDate ? new Date(startDate).getFullYear() : year;
+  const yearsEntitled = Math.max(1, year - startYear + 1);
+  const totalEntitled = vacPerYear * Math.min(yearsEntitled, 20);
+
+  // כמה נוצל עד סוף אותה שנה
+  let totalUsed = 0;
+  for (const [key, m] of Object.entries(appData.months)) {
+    if (parseInt(key.split('-')[0]) <= year) {
+      totalUsed += parseInt(m.vacDays) || 0;
+    }
+  }
   return Math.max(0, totalEntitled - totalUsed);
 }
 
@@ -752,12 +776,12 @@ function onMonthInputChange() {
       const prevYear = yr - 1;
       const hasPrevYear = Object.keys(appData.months).some(k => k.startsWith(prevYear + '-'));
       if (hasPrevYear) {
-        const vacPerYear = appData.worker?.vacTotal || 0;
-        const vacLeft    = calcVacLeft();
-        const carried    = Math.max(0, vacLeft - vacPerYear);
-        if (carried > 0) {
+        const vacPerYear  = appData.worker?.vacTotal || 0;
+        const carriedOver = calcVacLeftAtEndOfYear(prevYear);
+        const totalNew    = carriedOver + vacPerYear;
+        if (carriedOver > 0) {
           setTimeout(() => toast(
-            `🏖️ שנה חדשה ${yr} — ${carried} ימי חופשה עברו מ-${prevYear} + ${vacPerYear} ימים חדשים = ${vacLeft} סה"כ`
+            `🏖️ שנה חדשה ${yr} — ${carriedOver} ימים נותרו מ-${prevYear} + ${vacPerYear} ימים חדשים = ${totalNew} סה"כ`
           ), 200);
         } else {
           setTimeout(() => toast(`🏖️ שנה חדשה ${yr} — ${vacPerYear} ימי חופשה זמינים`), 200);

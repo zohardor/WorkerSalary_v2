@@ -866,6 +866,8 @@ function generatePDF() {
 
   const holUsed = calcHolUsed(parseInt(yr));
   const vacUsed = calcTotalVacUsed();
+  const vacLeft = calcVacLeftAtEndOfYear(parseInt(yr));
+  const holLeft = Math.max(0, (w.holTotal||0) - holUsed);
   const seniorityText = calcSeniorityText(w.startDate);
 
   const html = `<!DOCTYPE html>
@@ -987,13 +989,13 @@ function generatePDF() {
 <div class="vac-row">
   <div class="vac-box hol">
     <div class="vb-title">🎉 ימי חג / Holidays</div>
-    <div class="vb-val purple">${Math.max(0,(w.holTotal||0)-holUsed)}</div>
+    <div class="vb-val purple">${holLeft}</div>
     <div class="vb-sub">נותרו מתוך ${w.holTotal||0} (נוצלו ${holUsed})</div>
   </div>
   <div class="vac-box vac">
     <div class="vb-title">🏖️ ימי חופשה / Vacation</div>
-    <div class="vb-val green">${Math.max(0,(w.vacTotal||0)-vacUsed)}</div>
-    <div class="vb-sub">נותרו מתוך ${w.vacTotal||0} (נוצלו ${vacUsed})</div>
+    <div class="vb-val green">${vacLeft}</div>
+    <div class="vb-sub">נותרו מצטבר (נוצלו ${vacUsed} סה"כ)</div>
   </div>
 </div>
 <div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee;">

@@ -1483,8 +1483,9 @@
     <div class="modal-footer">
       <button class="btn btn-danger btn-sm" id="delete-month-btn" onclick="deleteMonthFromDb(document.getElementById('editing-month-key').value)" style="display:none; margin-left:auto;">🗑️ מחק</button>
       <button class="btn btn-outline" onclick="closeModal()">ביטול</button>
-      <button class="btn btn-primary" onclick="saveMonthToDb()">💾 שמור חודש</button>
+      <button class="btn btn-primary" id="save-month-btn" onclick="saveMonthToDb()">💾 שמור חודש</button>
       <button class="btn btn-success" onclick="generatePDF()">📄 PDF</button>
+      <button class="btn" id="mark-paid-btn" onclick="toggleMonthPaid()" style="display:none;background:rgba(52,211,153,0.15);border:1px solid var(--success);color:var(--success);">✓ סמן כשולם</button>
     </div>
   </div>
 </div>

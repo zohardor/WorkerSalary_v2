@@ -413,13 +413,14 @@ function calcHolUsedThisYear() {
 function calcVacLeft() {
   const startDate = appData.worker?.startDate;
   const vacPerYear = appData.worker?.vacTotal || 0;
-  if (!startDate || !vacPerYear) return Math.max(0, vacPerYear - calcTotalVacUsed());
-  
-  // חשב כמה שנות עבודה עברו
+  if (!vacPerYear) return 0;
+  if (!startDate) return Math.max(0, vacPerYear - calcTotalVacUsed());
+
+  // כמה שנות עבודה מלאות עברו (מינימום 1)
   const start = new Date(startDate);
   const now = new Date();
-  const yearsWorked = Math.floor((now - start) / (1000 * 60 * 60 * 24 * 365.25)) + 1;
-  const totalEntitled = vacPerYear * Math.min(yearsWorked, 10); // מגביל ל-10 שנים
+  const yearsWorked = Math.max(1, Math.floor((now - start) / (1000 * 60 * 60 * 24 * 365.25)) + 1);
+  const totalEntitled = vacPerYear * Math.min(yearsWorked, 10);
   const totalUsed = calcTotalVacUsed();
   return Math.max(0, totalEntitled - totalUsed);
 }
@@ -486,16 +487,22 @@ function renderMonthsList() {
     const [yr, mo] = key.split('-');
     const label = HEB_MONTHS[parseInt(mo)-1] + ' ' + yr;
     const total = calcTotal(m);
+    const customHols = (m.customVacDays||[]).length;
+    const allHols = (m.holidays||[]).length + customHols;
+    const paidBadge = m.paid
+      ? `<span style="background:rgba(52,211,153,0.15);color:var(--success);border:1px solid var(--success);border-radius:12px;padding:2px 8px;font-size:11px;font-weight:700;">✓ שולם</span>`
+      : '';
     return `
-      <div class="month-entry" onclick="openMonthModal('${key}')">
-        <div class="me-date">${label}</div>
+      <div class="month-entry" onclick="openMonthModal('${key}')" style="${m.paid ? 'opacity:.85;' : ''}">
+        <div class="me-date">${label} ${paidBadge}</div>
         <div class="me-info">
           <span class="me-chip">בסיס: ₪${Number(m.base||0).toLocaleString()}</span>
           <span class="me-chip shab">🕯️ ${m.shabbats?.length||0} שבתות</span>
-          <span class="me-chip hol">🎉 ${m.holidays?.length||0} חגים</span>
+          <span class="me-chip hol">🎉 ${allHols} חגים</span>
           ${m.expenses ? `<span class="me-chip">החזר: ₪${Number(m.expenses).toLocaleString()}</span>` : ''}
-          ${m.vacDays ? `<span class="me-chip" style="background:rgba(52,211,153,0.15);color:var(--success);">🏖️ ${m.vacDays} ימי חופשה</span>` : ''}
-          ${m.notes ? `<span class="me-chip">📝 ${m.notes}</span>` : ''}
+          ${m.havra    ? `<span class="me-chip" style="color:var(--warn);">🌴 הבראה: ₪${Number(m.havra).toLocaleString()}</span>` : ''}
+          ${m.vacDays  ? `<span class="me-chip" style="background:rgba(52,211,153,0.15);color:var(--success);">🏖️ ${m.vacDays} ימי חופשה</span>` : ''}
+          ${m.notes    ? `<span class="me-chip">📝 ${m.notes}</span>` : ''}
         </div>
         <div class="me-total">₪${Number(total).toLocaleString()}</div>
       </div>
@@ -505,11 +512,12 @@ function renderMonthsList() {
 
 function calcTotal(m) {
   const w = appData.worker;
-  const base = parseFloat(m.base) || 0;
-  const shabs = (m.shabbats||[]).length * (parseFloat(w.shabbatBonus)||0);
-  const hols = (m.holidays||[]).length * (parseFloat(w.holidayBonus)||0);
-  const exp = parseFloat(m.expenses) || 0;
-  return base + shabs + hols + exp;
+  const base  = parseFloat(m.base)     || 0;
+  const shabs = (m.shabbats||[]).length   * (parseFloat(w.shabbatBonus)||0);
+  const hols  = ((m.holidays||[]).length + (m.customVacDays||[]).length) * (parseFloat(w.holidayBonus)||0);
+  const exp   = parseFloat(m.expenses) || 0;
+  const havra = parseFloat(m.havra)    || 0;
+  return base + shabs + hols + exp + havra;
 }
 
 // ─────────────── MODAL ───────────────
@@ -535,6 +543,7 @@ function openMonthModal(key = null, pdfOnly = false) {
     setV('m-havra',    m.havra    || 0);
     setV('m-vac-days', m.vacDays  || 0);
     setV('m-notes',    m.notes    || '');
+    setTimeout(() => applyModalPaidState(key), 50);
     const [yr, mo] = key.split('-').map(Number);
     calState.year = yr;
     calState.month = mo - 1;
@@ -658,17 +667,38 @@ function renderCalendar() {
 }
 
 function toggleDay(dateStr, isSat, isHol) {
+  const holTotal = appData.worker?.holTotal || 0;
+  const monthKey = v('m-month') || document.getElementById('editing-month-key')?.value;
+  const monthYear = monthKey ? parseInt(monthKey.split('-')[0]) : new Date().getFullYear();
+
   if (isSat) {
     if (calState.workedShabbats.has(dateStr)) calState.workedShabbats.delete(dateStr);
     else calState.workedShabbats.add(dateStr);
   } else if (isHol) {
-    if (calState.workedHolidays.has(dateStr)) calState.workedHolidays.delete(dateStr);
-    else calState.workedHolidays.add(dateStr);
+    if (calState.workedHolidays.has(dateStr)) {
+      calState.workedHolidays.delete(dateStr);
+    } else {
+      // תיקון 1: בדוק שלא חרגנו ממכסת ימי החג השנתית
+      const currentUsed = calcHolUsed(monthYear);
+      const pendingCustom = calState.customVacDays.size;
+      const pendingHol = calState.workedHolidays.size + 1; // +1 לזה שמנסים להוסיף
+      if (holTotal > 0 && (currentUsed + pendingCustom + 1) > holTotal) {
+        toast(`⚠️ הגעת למכסת ${holTotal} ימי חג לשנה זו`);
+        return;
+      }
+      calState.workedHolidays.add(dateStr);
+    }
   } else {
-    // יום רגיל — toggle חג מותאם אישית (נספר בחגים)
+    // יום רגיל — toggle חג מותאם אישית
     if (calState.customVacDays.has(dateStr)) {
       calState.customVacDays.delete(dateStr);
     } else {
+      // תיקון 1: בדוק מכסה לחגים מותאמים גם
+      const currentUsed = calcHolUsed(monthYear);
+      if (holTotal > 0 && (currentUsed + 1) > holTotal) {
+        toast(`⚠️ הגעת למכסת ${holTotal} ימי חג לשנה זו`);
+        return;
+      }
       calState.customVacDays.add(dateStr);
     }
   }
@@ -1267,7 +1297,72 @@ function generateTerminationPDF() {
   toast('דוח סיום נפתח – לחץ הדפס לשמירת PDF');
 }
 
-// ─────────────── ALERTS SYSTEM ───────────────
+// ─────────────── PAID STATUS ───────────────
+
+function toggleMonthPaid() {
+  const key = document.getElementById('editing-month-key')?.value;
+  if (!key) return;
+  const m = appData.months[key];
+  if (!m) return;
+
+  m.paid = !m.paid;
+  saveLocal();
+  applyModalPaidState(key);
+  toast(m.paid ? '✅ החודש סומן כשולם ונעול לעריכה' : '🔓 החודש פתוח לעריכה');
+  renderMonthsList();
+
+  // שמור ב-DB
+  if (typeof saveMonthPaidStatus === 'function') saveMonthPaidStatus(key, m.paid);
+}
+
+function applyModalPaidState(key) {
+  const m = appData.months[key];
+  const paid = m?.paid || false;
+  const saveBtn    = document.getElementById('save-month-btn');
+  const paidBtn    = document.getElementById('mark-paid-btn');
+  const deleteBtn  = document.getElementById('delete-month-btn');
+
+  // נעל/פתח שדות
+  const fields = ['m-base','m-expenses','m-havra','m-vac-days','m-notes','m-month'];
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = paid;
+  });
+
+  // נעל לחיצה על לוח שנה
+  const grid = document.getElementById('cal-grid');
+  if (grid) grid.style.pointerEvents = paid ? 'none' : 'auto';
+
+  // עדכן כפתורים
+  if (saveBtn) {
+    saveBtn.disabled = paid;
+    saveBtn.style.opacity = paid ? '0.4' : '1';
+  }
+  if (deleteBtn) deleteBtn.style.display = paid ? 'none' : 'inline-flex';
+  if (paidBtn) {
+    paidBtn.style.display = key ? 'inline-flex' : 'none';
+    if (paid) {
+      paidBtn.textContent = '🔒 שולם — לחץ לביטול';
+      paidBtn.style.background = 'rgba(52,211,153,0.25)';
+    } else {
+      paidBtn.textContent = '✓ סמן כשולם';
+      paidBtn.style.background = 'rgba(52,211,153,0.15)';
+    }
+  }
+
+  // באנר נעילה
+  let banner = document.getElementById('paid-banner');
+  if (paid && !banner) {
+    banner = document.createElement('div');
+    banner.id = 'paid-banner';
+    banner.style.cssText = 'background:rgba(52,211,153,0.1);border:1px solid var(--success);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--success);font-weight:600;';
+    banner.innerHTML = '🔒 החודש שולם — מוצג בקריאה בלבד. לחץ "שולם" כדי לערוך.';
+    const form = document.querySelector('.modal-body');
+    if (form) form.insertBefore(banner, form.firstChild);
+  } else if (!paid && banner) {
+    banner.remove();
+  }
+}
 
 function renderAlerts() {
   const container = document.getElementById('alerts-container');

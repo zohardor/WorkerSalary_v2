@@ -730,6 +730,27 @@ function toggleDay(dateStr, isSat, isHol) {
   updateCustomVacDisplay();
 }
 
+function onMonthInputChange() {
+  const val = v('m-month');
+  if (!val) return;
+  const [yr, mo] = val.split('-').map(Number);
+  calState.year  = yr;
+  calState.month = mo - 1;
+  // אם חודש קיים — טען את הנתונים שלו
+  if (appData.months[val]) {
+    const m = appData.months[val];
+    calState.workedShabbats = new Set(m.shabbats      || []);
+    calState.workedHolidays = new Set(m.holidays      || []);
+    calState.customVacDays  = new Set(m.customVacDays || []);
+  } else {
+    calState.workedShabbats = new Set();
+    calState.workedHolidays = new Set();
+    calState.customVacDays  = new Set();
+  }
+  renderCalendar();
+  updateCustomVacDisplay();
+}
+
 function updateCustomVacDisplay() {
   const count = calState.customVacDays.size;
   const el = document.getElementById('custom-vac-count');

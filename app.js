@@ -543,17 +543,28 @@ function openMonthModal(key = null, pdfOnly = false) {
     setV('m-havra',    m.havra    || 0);
     setV('m-vac-days', m.vacDays  || 0);
     setV('m-notes',    m.notes    || '');
-    setTimeout(() => applyModalPaidState(key), 50);
     const [yr, mo] = key.split('-').map(Number);
     calState.year = yr;
     calState.month = mo - 1;
     calState.workedShabbats = new Set(m.shabbats || []);
     calState.workedHolidays = new Set(m.holidays || []);
     calState.customVacDays  = new Set(m.customVacDays || []);
+    setTimeout(() => applyModalPaidState(key), 50);
   } else {
     document.getElementById('editing-month-key').value = '';
     document.getElementById('modal-title-text').textContent = pdfOnly ? 'בחר חודש לדוח PDF' : 'הוספת חודש חדש';
     document.getElementById('delete-month-btn').style.display = 'none';
+    // ודא שהכל פתוח לעריכה לחודש חדש
+    const fields = ['m-base','m-expenses','m-havra','m-vac-days','m-notes','m-month'];
+    fields.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = false; });
+    const grid = document.getElementById('cal-grid');
+    if (grid) grid.style.pointerEvents = 'auto';
+    const saveBtn = document.getElementById('save-month-btn');
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; }
+    const paidBtn = document.getElementById('mark-paid-btn');
+    if (paidBtn) paidBtn.style.display = 'none';
+    const banner = document.getElementById('paid-banner');
+    if (banner) banner.remove();
     const now = new Date();
     calState.year = now.getFullYear();
     calState.month = now.getMonth();
@@ -562,10 +573,11 @@ function openMonthModal(key = null, pdfOnly = false) {
     calState.customVacDays  = new Set();
     const monthStr = calState.year + '-' + String(calState.month + 1).padStart(2,'0');
     setV('m-month', monthStr);
-    setV('m-base', appData.worker.baseSalary || '');
+    setV('m-base',     appData.worker.baseSalary || '');
     setV('m-expenses', 0);
+    setV('m-havra',    0);
     setV('m-vac-days', 0);
-    setV('m-notes', '');
+    setV('m-notes',    '');
   }
   renderCalendar();
   updateSummary();

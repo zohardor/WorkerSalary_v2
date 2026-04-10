@@ -326,21 +326,34 @@ async function saveMonthToDb() {
   }
   if (!currentWorker?.id) return;
 
-  const { error } = await db.from('months').upsert({
-    worker_id:  currentWorker.id,
-    month_key:  key,
-    base:       monthObj.base,
-    expenses:   monthObj.expenses,
-    havra:      monthObj.havra,
-    vac_days:   monthObj.vacDays,
-    notes:      monthObj.notes,
-    shabbats:   monthObj.shabbats,
-    holidays:   monthObj.holidays,
+  const monthData = {
+    worker_id:       currentWorker.id,
+    month_key:       key,
+    base:            monthObj.base,
+    expenses:        monthObj.expenses,
+    havra:           monthObj.havra,
+    vac_days:        monthObj.vacDays,
+    notes:           monthObj.notes,
+    shabbats:        monthObj.shabbats,
+    holidays:        monthObj.holidays,
     custom_vac_days: monthObj.customVacDays,
-  }, { onConflict: 'worker_id,month_key' });
+  };
 
-  if (error) console.error('Month save error:', error.message);
-  else console.log('✓ Month saved:', key);
+  // retry עד 3 פעמים במקרה של lock conflict
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const { error } = await db.from('months').upsert(monthData, { onConflict: 'worker_id,month_key' });
+    if (!error) {
+      console.log('✓ Month saved:', key);
+      break;
+    }
+    if (attempt < 3) {
+      console.warn(`Month save attempt ${attempt} failed: ${error.message}, retrying...`);
+      await new Promise(r => setTimeout(r, 600 * attempt));
+    } else {
+      console.error('Month save failed after 3 attempts:', error.message);
+      safeToast('⚠️ שגיאת שמירה לענן — נשמר מקומית');
+    }
+  }
 }
 
 async function deleteMonthFromDb(key) {

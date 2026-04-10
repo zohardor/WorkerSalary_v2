@@ -339,20 +339,42 @@ async function saveMonthToDb() {
     custom_vac_days: monthObj.customVacDays,
   };
 
-  // retry עד 3 פעמים במקרה של lock conflict
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    const { error } = await db.from('months').upsert(monthData, { onConflict: 'worker_id,month_key' });
-    if (!error) {
-      console.log('✓ Month saved:', key);
-      break;
-    }
-    if (attempt < 3) {
-      console.warn(`Month save attempt ${attempt} failed: ${error.message}, retrying...`);
-      await new Promise(r => setTimeout(r, 600 * attempt));
+  // שמור ב-DB — select קודם ואז insert/update כדי להימנע מ-lock conflicts
+  try {
+    const { data: existing } = await db.from('months')
+      .select('id')
+      .eq('worker_id', currentWorker.id)
+      .eq('month_key', key)
+      .maybeSingle();
+
+    let error;
+    if (existing?.id) {
+      // עדכן רשומה קיימת
+      const r = await db.from('months').update({
+        base:            monthData.base,
+        expenses:        monthData.expenses,
+        havra:           monthData.havra,
+        vac_days:        monthData.vac_days,
+        notes:           monthData.notes,
+        shabbats:        monthData.shabbats,
+        holidays:        monthData.holidays,
+        custom_vac_days: monthData.custom_vac_days,
+      }).eq('id', existing.id);
+      error = r.error;
     } else {
-      console.error('Month save failed after 3 attempts:', error.message);
-      safeToast('⚠️ שגיאת שמירה לענן — נשמר מקומית');
+      // הוסף רשומה חדשה
+      const r = await db.from('months').insert(monthData);
+      error = r.error;
     }
+
+    if (error) {
+      console.error('Month save error:', error.message);
+      safeToast('⚠️ שגיאת שמירה לענן — נשמר מקומית');
+    } else {
+      console.log('✓ Month saved:', key);
+    }
+  } catch(e) {
+    console.error('Month save exception:', e.message);
   }
 }
 

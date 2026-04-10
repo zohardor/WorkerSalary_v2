@@ -746,6 +746,24 @@ function onMonthInputChange() {
     calState.workedShabbats = new Set();
     calState.workedHolidays = new Set();
     calState.customVacDays  = new Set();
+
+    // תיקון 1: התראת שנה חדשה — הצג יתרת חופשה מצטברת
+    if (mo === 1) {
+      const prevYear = yr - 1;
+      const hasPrevYear = Object.keys(appData.months).some(k => k.startsWith(prevYear + '-'));
+      if (hasPrevYear) {
+        const vacPerYear = appData.worker?.vacTotal || 0;
+        const vacLeft    = calcVacLeft();
+        const carried    = Math.max(0, vacLeft - vacPerYear);
+        if (carried > 0) {
+          setTimeout(() => toast(
+            `🏖️ שנה חדשה ${yr} — ${carried} ימי חופשה עברו מ-${prevYear} + ${vacPerYear} ימים חדשים = ${vacLeft} סה"כ`
+          ), 200);
+        } else {
+          setTimeout(() => toast(`🏖️ שנה חדשה ${yr} — ${vacPerYear} ימי חופשה זמינים`), 200);
+        }
+      }
+    }
   }
   renderCalendar();
   updateCustomVacDisplay();

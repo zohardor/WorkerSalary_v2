@@ -288,9 +288,9 @@ async function saveMonthToDb() {
     havra:           monthObj.havra,
     vac_days:        monthObj.vacDays,
     notes:           monthObj.notes,
-    shabbats:        monthObj.shabbats,
-    holidays:        monthObj.holidays,
-    custom_vac_days: monthObj.customVacDays,
+    shabbats:        monthObj.shabbats    || [],
+    holidays:        monthObj.holidays    || [],
+    custom_vac_days: monthObj.customVacDays || [],
   };
 
   try {
@@ -370,7 +370,7 @@ async function loadWorkerData(workerId) {
         base: m.base, expenses: m.expenses, havra: m.havra || 0,
         vacDays: m.vac_days, notes: m.notes,
         shabbats: m.shabbats || [], holidays: m.holidays || [],
-        customVacDays: m.custom_vac_days || [],
+        customVacDays: Array.isArray(m.custom_vac_days) ? m.custom_vac_days : (m.custom_vac_days ? Object.values(m.custom_vac_days) : []),
       };
     });
 

@@ -587,6 +587,18 @@ function openMonthModal(key = null, pdfOnly = false) {
 
 function closeModal() {
   document.getElementById('month-modal').classList.remove('open');
+  document.getElementById('editing-month-key').value = '';
+  // פתח את כל השדות לפעם הבאה
+  const fields = ['m-base','m-expenses','m-havra','m-vac-days','m-notes','m-month'];
+  fields.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = false; });
+  const grid = document.getElementById('cal-grid');
+  if (grid) grid.style.pointerEvents = 'auto';
+  const saveBtn = document.getElementById('save-month-btn');
+  if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; }
+  const paidBtn = document.getElementById('mark-paid-btn');
+  if (paidBtn) paidBtn.style.display = 'none';
+  const banner = document.getElementById('paid-banner');
+  if (banner) banner.remove();
 }
 
 function saveMonth() {

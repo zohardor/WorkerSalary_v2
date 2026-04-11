@@ -1244,7 +1244,11 @@ function calcTermination() {
   const sortedMonths = Object.entries(appData.months).sort((a,b) => b[0].localeCompare(a[0]));
   const lastMonth    = sortedMonths[0]?.[1];
   const lastSalary   = lastMonth?.base || parseFloat(w.baseSalary) || 0;
-  const dailySalary  = lastSalary / 25;
+  // תעריף יומי — שכר חודשי / 22 ימי עבודה
+  const dailySalary  = lastSalary / 22;
+
+  // ימי חופשה לפדיון — לפי תאריך הסיום (לא היום)
+  const vacLeft      = calcVacLeftAtEndOfYear(endYear);
 
   const rows = [];
   let total  = 0;
@@ -1287,7 +1291,6 @@ function calcTermination() {
   }
 
   // 3. פדיון חופשה שנותרה
-  const vacLeft = calcVacLeft();
   if (vacLeft > 0) {
     const vacPay = dailySalary * vacLeft;
     rows.push({

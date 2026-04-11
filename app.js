@@ -1247,8 +1247,12 @@ function calcTermination() {
   // תעריף יומי — שכר חודשי / 22 ימי עבודה
   const dailySalary  = lastSalary / 22;
 
+  // endYear ו-endMonth — נדרשים לחישוב הבראה וחופשה
+  const endYear    = end.getFullYear();
+  const endMonth   = end.getMonth() + 1;
+
   // ימי חופשה לפדיון — לפי תאריך הסיום (לא היום)
-  const vacLeft      = calcVacLeftAtEndOfYear(endYear);
+  const vacLeft    = calcVacLeftAtEndOfYear(endYear);
 
   const rows = [];
   let total  = 0;
@@ -1271,8 +1275,6 @@ function calcTermination() {
   const havraRate  = r.havraRate || 378;
   const havraDays  = calcHavraDays(startDate);
   const havraMonth = parseInt(r.havraMonth || '7');
-  const endYear    = end.getFullYear();
-  const endMonth   = end.getMonth() + 1;
 
   // מצא את יולי האחרון שהיה לפני תאריך הסיום
   let lastHavraYear = endYear;

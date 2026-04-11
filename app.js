@@ -1221,72 +1221,125 @@ function addHavraToMonth() {
 
 function calcTermination() {
   const endDate   = v('term-end-date');
-  const salary    = parseFloat(v('term-salary')) || 0;
-  const unusedVac = parseInt(v('term-unused-vac')) || 0;
   const reason    = v('term-reason');
+  const extra     = parseFloat(v('term-extra'))     || 0;
+  const extraNote = v('term-extra-note') || 'תשלום נוסף';
   const startDate = appData.worker?.startDate;
+  const w         = appData.worker || {};
+  const r         = appData.rates  || {};
 
-  if (!endDate || !salary || !startDate) return;
+  if (!endDate || !startDate) return;
 
-  const start  = new Date(startDate);
-  const end    = new Date(endDate);
+  const start = new Date(startDate);
+  const end   = new Date(endDate);
 
-  // חישוב מדויק של שנים לפי תאריך (לא ms)
-  let years = end.getFullYear() - start.getFullYear();
-  const monthDiff = end.getMonth() - start.getMonth();
-  const dayDiff   = end.getDate()  - start.getDate();
-  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) years--;
+  // חישוב שנים מדויק
   const remainMonths = ((end.getFullYear() * 12 + end.getMonth()) -
                         (start.getFullYear() * 12 + start.getMonth()));
-  const exactYears = remainMonths / 12 + (dayDiff >= 0 ? 0 : -1/365);
-
+  const dayDiff      = end.getDate() - start.getDate();
+  const exactYears   = remainMonths / 12 + (dayDiff >= 0 ? 0 : -1/365);
   if (exactYears < 0) { toast('תאריך סיום לפני תאריך התחלה'); return; }
 
-  const dailySalary = salary / 25;
+  // שכר אחרון — לפי החודש האחרון שנשמר
+  const sortedMonths = Object.entries(appData.months).sort((a,b) => b[0].localeCompare(a[0]));
+  const lastMonth    = sortedMonths[0]?.[1];
+  const lastSalary   = lastMonth?.base || parseFloat(w.baseSalary) || 0;
+  const dailySalary  = lastSalary / 25;
+
   const rows = [];
   let total  = 0;
 
-  // 1. פיצויי פיטורים (רק בפיטורים / הסכמה)
-  if (reason !== 'resigned') {
-    const severance = salary * exactYears;
-    rows.push({ label: `פיצויי פיטורים (${exactYears.toFixed(2)} שנים × ₪${salary.toLocaleString()})`, amount: severance, color: 'var(--danger)' });
-    total += severance;
+  // 1. פנסיה / פיצויים — סה"כ מצטבר מכל החודשים
+  const pensionRate = (r.pension || 0) / 100;
+  let totalPension  = 0;
+  for (const [, m] of Object.entries(appData.months)) {
+    totalPension += (parseFloat(m.base) || 0) * pensionRate;
+  }
+  if (totalPension > 0) {
+    rows.push({
+      label: `פנסיה/פיצויים מצטבר (${r.pension||0}% × סה"כ שכר)`,
+      amount: totalPension, color: 'var(--danger)'
+    });
+    total += totalPension;
   }
 
-  // 2. הודעה מוקדמת
-  const noticeMonths = Math.min(Math.floor(exactYears), 6);
-  if (noticeMonths > 0) {
-    const noticePay = salary * noticeMonths;
-    rows.push({ label: `הודעה מוקדמת (${noticeMonths} חודשים)`, amount: noticePay, color: 'var(--warn)' });
-    total += noticePay;
+  // 2. הבראה שלא שולמה מיולי האחרון
+  const havraRate  = r.havraRate || 378;
+  const havraDays  = calcHavraDays(startDate);
+  const havraMonth = parseInt(r.havraMonth || '7');
+  const endYear    = end.getFullYear();
+  const endMonth   = end.getMonth() + 1;
+
+  // מצא את יולי האחרון שהיה לפני תאריך הסיום
+  let lastHavraYear = endYear;
+  if (endMonth < havraMonth) lastHavraYear = endYear - 1;
+
+  // בדוק כמה חודשים עברו מאז תשלום ההבראה האחרון
+  const monthsSinceHavra = (end.getFullYear() * 12 + end.getMonth()) -
+                           (lastHavraYear * 12 + (havraMonth - 1));
+  if (monthsSinceHavra > 0 && monthsSinceHavra < 12) {
+    const havraOwed = (havraRate * havraDays * monthsSinceHavra) / 12;
+    rows.push({
+      label: `הבראה יחסית (${monthsSinceHavra} חודשים מיולי ${lastHavraYear})`,
+      amount: havraOwed, color: 'var(--warn)'
+    });
+    total += havraOwed;
   }
 
-  // 3. פדיון חופשה
-  if (unusedVac > 0) {
-    const vacPay = dailySalary * unusedVac;
-    rows.push({ label: `פדיון חופשה (${unusedVac} ימים × ₪${dailySalary.toFixed(0)})`, amount: vacPay, color: 'var(--success)' });
+  // 3. פדיון חופשה שנותרה
+  const vacLeft = calcVacLeft();
+  if (vacLeft > 0) {
+    const vacPay = dailySalary * vacLeft;
+    rows.push({
+      label: `פדיון חופשה (${vacLeft} ימים × ₪${dailySalary.toFixed(0)})`,
+      amount: vacPay, color: 'var(--success)'
+    });
     total += vacPay;
   }
 
-  // 4. הבראה יחסית לשנה האחרונה
-  const fullYears = Math.floor(exactYears);
-  const lastYearFraction = exactYears - fullYears;
-  if (lastYearFraction > 0.01) {
-    const havraRate = appData.rates?.havraRate || 378;
-    const havraDays = calcHavraDays(startDate);
-    const havraPro  = havraRate * havraDays * lastYearFraction;
-    rows.push({ label: `הבראה יחסית (${(lastYearFraction * 12).toFixed(1)} חודשים)`, amount: havraPro, color: 'var(--holiday)' });
-    total += havraPro;
-  }
-
-  // 5. שכר חלקי לחודש האחרון
+  // 4. שכר חלקי לחודש האחרון
   const lastMonthDays = end.getDate();
   const daysInMonth   = new Date(end.getFullYear(), end.getMonth()+1, 0).getDate();
   if (lastMonthDays < daysInMonth) {
-    const partialSalary = (salary / daysInMonth) * lastMonthDays;
-    rows.push({ label: `שכר חלקי (${lastMonthDays}/${daysInMonth} ימים)`, amount: partialSalary, color: 'var(--accent)' });
+    const partialSalary = (lastSalary / daysInMonth) * lastMonthDays;
+    rows.push({
+      label: `שכר חלקי חודש אחרון (${lastMonthDays}/${daysInMonth} ימים × ₪${lastSalary.toLocaleString()})`,
+      amount: partialSalary, color: 'var(--accent)'
+    });
     total += partialSalary;
   }
+
+  // 5. הודעה מוקדמת (בפיטורים)
+  if (reason !== 'resigned') {
+    const noticeMonths = Math.min(Math.floor(exactYears), 6);
+    if (noticeMonths > 0) {
+      const noticePay = lastSalary * noticeMonths;
+      rows.push({
+        label: `הודעה מוקדמת (${noticeMonths} חודשים × ₪${lastSalary.toLocaleString()})`,
+        amount: noticePay, color: 'var(--holiday)'
+      });
+      total += noticePay;
+    }
+  }
+
+  // 6. תשלום נוסף לאיזון
+  if (extra > 0) {
+    rows.push({ label: extraNote, amount: extra, color: 'var(--text2)' });
+    total += extra;
+  }
+
+  // סיכום מידע
+  const infoHtml = `
+    <div style="background:rgba(91,127,255,0.06);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--text2);">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <span>תחילת עבודה: <strong>${startDate}</strong></span>
+        <span>תאריך סיום: <strong>${endDate}</strong></span>
+        <span>ותק: <strong>${exactYears.toFixed(2)} שנים</strong></span>
+        <span>שכר אחרון: <strong>₪${lastSalary.toLocaleString()}</strong></span>
+        <span>ימי חופשה לפדיון: <strong>${vacLeft}</strong></span>
+        <span>סיבת סיום: <strong>${reason === 'fired' ? 'פיטורים' : reason === 'resigned' ? 'התפטרות' : 'הסכמה הדדית'}</strong></span>
+      </div>
+    </div>`;
 
   const rowsHtml = rows.map(r => `
     <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
@@ -1294,11 +1347,11 @@ function calcTermination() {
       <span style="font-weight:700;color:${r.color};">₪${r.amount.toLocaleString('he-IL',{maximumFractionDigits:0})}</span>
     </div>`).join('');
 
-  document.getElementById('term-rows').innerHTML = rowsHtml;
+  document.getElementById('term-rows').innerHTML = infoHtml + rowsHtml;
   setText('term-total', '₪' + total.toLocaleString('he-IL', {maximumFractionDigits:0}));
   document.getElementById('termination-result').style.display = 'block';
   document.getElementById('termination-placeholder').style.display = 'none';
-  window._termData = { rows, total, years: exactYears, startDate, endDate, reason, salary };
+  window._termData = { rows, total, years: exactYears, startDate, endDate, reason, salary: lastSalary };
 }
 
 function generateTerminationPDF() {

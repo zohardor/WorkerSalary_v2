@@ -1230,8 +1230,8 @@ function calcTermination() {
 
   if (!endDate || !startDate) return;
 
-  const start = new Date(startDate);
-  const end   = new Date(endDate);
+  const start = new Date(startDate + 'T12:00:00');
+  const end   = new Date(endDate   + 'T12:00:00');
 
   // חישוב שנים מדויק
   const remainMonths = ((end.getFullYear() * 12 + end.getMonth()) -

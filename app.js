@@ -1257,18 +1257,49 @@ function calcTermination() {
   const rows = [];
   let total  = 0;
 
-  // 1. פנסיה / פיצויים — סה"כ מצטבר מכל החודשים
-  const pensionRate = (r.pension || 0) / 100;
-  let totalPension  = 0;
-  for (const [, m] of Object.entries(appData.months)) {
-    totalPension += (parseFloat(m.base) || 0) * pensionRate;
+  // 1. פנסיה ופיצויים — לפי ותק וחוק
+  const pensionRate   = (r.pension   || 6.5)  / 100;
+  const severanceRate = (r.severance || 8.33) / 100;
+
+  // חשב לפי חודשים בפועל
+  const sortedEntries = Object.entries(appData.months).sort((a,b) => a[0].localeCompare(b[0]));
+  let totalPension   = 0;
+  let totalSeverance = 0;
+  let monthIndex     = 0;
+
+  for (const [, m] of sortedEntries) {
+    monthIndex++;
+    const base = parseFloat(m.base) || 0;
+
+    // פנסיה — מחודש 7 בלבד
+    if (monthIndex >= 7) {
+      totalPension += base * pensionRate;
+    }
+
+    // פיצויים:
+    // פחות משנה (< 12 חודשים) — 6% מחודש 7
+    // שנה ומעלה — 8.33% מחודש 1
+    if (exactYears >= 1) {
+      totalSeverance += base * severanceRate; // 8.33% מהחודש הראשון
+    } else if (monthIndex >= 7) {
+      totalSeverance += base * 0.06; // 6% מחודש 7 בלבד
+    }
   }
+
   if (totalPension > 0) {
     rows.push({
-      label: `פנסיה/פיצויים מצטבר (${r.pension||0}% × סה"כ שכר)`,
-      amount: totalPension, color: 'var(--danger)'
+      label: `פנסיה/ביטוחי (${r.pension||6.5}% × שכר מחודש 7)`,
+      amount: totalPension, color: 'var(--accent2)'
     });
     total += totalPension;
+  }
+
+  if (totalSeverance > 0) {
+    const sevLabel = exactYears >= 1
+      ? `פיצויים (${r.severance||8.33}% × כל החודשים)`
+      : `פיצויים (6% × חודשים 7+, פחות משנה)`;
+    rows.push({ label: sevLabel, amount: totalSeverance, color: 'var(--danger)' });
+    total += totalSeverance;
   }
 
   // 2. הבראה שלא שולמה מיולי האחרון
@@ -1739,8 +1770,9 @@ function saveRates() {
   const havraMonthly = havraAnnual / 12;
 
   appData.rates = {
-    bituach:     parseFloat(v('r-bituach')) || 0,
-    pension:     parseFloat(v('r-pension')) || 0,
+    bituach:    parseFloat(v('r-bituach'))   || 0,
+    pension:    parseFloat(v('r-pension'))   || 0,
+    severance:  parseFloat(v('r-severance')) || 8.33,
     havraDays,
     havraRate,
     havraMonthly,
@@ -1758,9 +1790,10 @@ function saveRates() {
 
 function populateRatesForm() {
   const r = appData.rates || {};
-  setV('r-bituach',     r.bituach);
-  setV('r-pension',     r.pension);
-  setV('r-havra-rate',  r.havraRate);
+  setV('r-bituach',    r.bituach);
+  setV('r-pension',    r.pension);
+  setV('r-severance',  r.severance || 8.33);
+  setV('r-havra-rate', r.havraRate);
   setV('r-havra-month', r.havraMonth || '7');
   updateHavraPreview();
 }

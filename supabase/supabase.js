@@ -222,8 +222,9 @@ async function saveRatesToDb() {
   const havraDays = (typeof calcHavraDays === 'function') ? calcHavraDays(appData.worker?.startDate) : 6;
 
   appData.rates = {
-    bituach: parseFloat(v('r-bituach')) || 0,
-    pension: parseFloat(v('r-pension')) || 0,
+    bituach:   parseFloat(v('r-bituach'))   || 0,
+    pension:   parseFloat(v('r-pension'))   || 0,
+    severance: parseFloat(v('r-severance')) || 8.33,
     havraDays, havraRate,
     havraMonth:   v('r-havra-month') || '7',
     havraMonthly: (havraDays * havraRate) / 12,
@@ -238,7 +239,7 @@ async function saveRatesToDb() {
 
   const { error } = await db.from('rates').upsert({
     worker_id: currentWorker.id, bituach: appData.rates.bituach,
-    pension: appData.rates.pension, havra_days: havraDays, havra_rate: havraRate,
+    pension: appData.rates.pension, severance: appData.rates.severance || 8.33, havra_days: havraDays, havra_rate: havraRate,
   }, { onConflict: 'worker_id' });
 
   const msg = document.getElementById('rates-save-msg');
@@ -376,7 +377,7 @@ async function loadWorkerData(workerId) {
 
     if (rates) {
       appData.rates = {
-        bituach: rates.bituach, pension: rates.pension,
+        bituach: rates.bituach, pension: rates.pension, severance: rates.severance || 8.33,
         havraDays: rates.havra_days, havraRate: rates.havra_rate,
         havraMonth: rates.havra_month || '7',
         havraMonthly: (rates.havra_days * rates.havra_rate) / 12,
@@ -446,7 +447,7 @@ async function syncAllToCloud() {
     if (r) {
       await db.from('rates').upsert({
         worker_id: currentWorker.id, bituach: r.bituach || 0,
-        pension: r.pension || 0, havra_days: r.havraDays || 0, havra_rate: r.havraRate || 0,
+        pension: r.pension || 0, severance: r.severance || 8.33, havra_days: r.havraDays || 0, havra_rate: r.havraRate || 0,
       }, { onConflict: 'worker_id' });
     }
 

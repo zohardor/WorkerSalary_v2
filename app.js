@@ -1798,13 +1798,29 @@ function populateRatesForm() {
   updateHavraPreview();
 }
 
-function calcEmployerCosts(grossSalary) {
-  const r = appData.rates || {};
+function calcEmployerCosts(grossSalary, monthNum = 99) {
+  const r            = appData.rates || {};
   const bituach      = (grossSalary * (r.bituach || 0)) / 100;
-  const pension      = (grossSalary * (r.pension  || 0)) / 100;
   const havraMonthly = ((r.havraRate || 0) * calcHavraDays(appData.worker?.startDate)) / 12;
-  const total        = bituach + pension + havraMonthly;
-  return { bituach, pension, havraMonthly, total };
+
+  // פנסיה — מחודש 7 בלבד
+  const pension = monthNum >= 7 ? (grossSalary * (r.pension || 6.5)) / 100 : 0;
+
+  // פיצויים — לפי ותק
+  const totalMonths  = Object.keys(appData.months).length;
+  const isFirstYear  = totalMonths < 12;
+  let severance      = 0;
+  let severanceRate  = 0;
+  if (isFirstYear && monthNum >= 7) {
+    severanceRate = 6;
+    severance     = (grossSalary * 6) / 100;
+  } else if (!isFirstYear) {
+    severanceRate = r.severance || 8.33;
+    severance     = (grossSalary * severanceRate) / 100;
+  }
+
+  const total = bituach + pension + severance + havraMonthly;
+  return { bituach, pension, severance, severanceRate, havraMonthly, total };
 }
 
 // הצג הוצאות מעסיק בתוך מודל החודש
@@ -1817,7 +1833,8 @@ function renderModalEmployerCosts() {
   const r = appData.rates || {};
   const rows = [
     r.bituach      ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>ביטוח לאומי מעסיק (${r.bituach}%)</span><span>₪${c.bituach.toFixed(2)}</span></div>` : '',
-    r.pension      ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>פנסיה/קה״ש מעסיק (${r.pension}%)</span><span>₪${c.pension.toFixed(2)}</span></div>` : '',
+    c.pension > 0  ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>פנסיה/ביטוחי מעסיק (${r.pension||6.5}%)</span><span>₪${c.pension.toFixed(2)}</span></div>` : '<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">פנסיה — מחודש 7</div>',
+    c.severance > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>פיצויים (${c.severanceRate}%)</span><span>₪${c.severance.toFixed(2)}</span></div>` : '<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">פיצויים — לפי ותק</div>',
     c.havraMonthly ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>הבראה (${r.havraDays} ימים × ₪${r.havraRate} ÷ 12)</span><span>₪${c.havraMonthly.toFixed(2)}</span></div>` : '',
   ].filter(Boolean).join('');
   el.innerHTML = rows
@@ -1844,27 +1861,28 @@ function renderCostsScreen() {
 
   const w = appData.worker;
   const r = appData.rates || {};
-  let cumGross = 0, cumBituach = 0, cumPension = 0, cumHavra = 0, cumEmployer = 0;
+  let cumGross = 0, cumBituach = 0, cumPension = 0, cumSeverance = 0, cumHavra = 0, cumEmployer = 0;
 
-  const rows = months.map(([key, m]) => {
+  const rows = months.map(([key, m], idx) => {
     const [yr, mo] = key.split('-');
-    const label = HEB_MONTHS[parseInt(mo)-1] + ' ' + yr;
+    const label    = HEB_MONTHS[parseInt(mo)-1] + ' ' + yr;
+    const monthNum = idx + 1; // מספר חודש רצוף
 
-    // ברוטו מלא = בסיס + שבתות + חגים + החזר הוצאות
-    const base    = parseFloat(m.base) || 0;
+    const base     = parseFloat(m.base) || 0;
     const sabBonus = parseFloat(w.shabbatBonus) || 0;
     const holBonus = parseFloat(w.holidayBonus) || 0;
-    const nSab    = (m.shabbats || []).length;
-    const nHol    = (m.holidays || []).length;
-    const exp     = parseFloat(m.expenses) || 0;
-    const gross   = base + nSab * sabBonus + nHol * holBonus + exp;
+    const nSab     = (m.shabbats || []).length;
+    const nHol     = (m.holidays || []).length + (m.customVacDays || []).length;
+    const exp      = parseFloat(m.expenses) || 0;
+    const gross    = base + nSab * sabBonus + nHol * holBonus + exp;
 
-    const c = calcEmployerCosts(base); // ב"ל ופנסיה על שכר בסיס בלבד (נהוג)
-    cumGross    += gross;
-    cumBituach  += c.bituach;
-    cumPension  += c.pension;
-    cumHavra    += c.havraMonthly;
-    cumEmployer += c.total;
+    const c = calcEmployerCosts(base, monthNum);
+    cumGross     += gross;
+    cumBituach   += c.bituach;
+    cumPension   += c.pension;
+    cumSeverance += c.severance;
+    cumHavra     += c.havraMonthly;
+    cumEmployer  += c.total;
 
     const monthTotal = gross + c.total;
 
@@ -1878,8 +1896,7 @@ function renderCostsScreen() {
       <tr style="border-bottom:1px solid var(--border);">
         <td style="padding:10px 8px;font-weight:600;white-space:nowrap;">${label}</td>
         <td style="padding:10px 8px;text-align:left;">
-          <div style="font-weight:600;">₪${gross.toLocaleString()}</div>
-          ${detail}
+          <div style="font-weight:600;">₪${gross.toLocaleString()}</div>${detail}
         </td>
         <td style="padding:10px 8px;text-align:left;">
           <div style="font-weight:600;">₪${c.bituach.toFixed(0)}</div>
@@ -1887,11 +1904,15 @@ function renderCostsScreen() {
         </td>
         <td style="padding:10px 8px;text-align:left;">
           <div style="font-weight:600;">₪${c.pension.toFixed(0)}</div>
-          ${r.pension ? `<div style="font-size:11px;color:var(--text3);">${r.pension}%</div>` : ''}
+          ${c.pension > 0 ? `<div style="font-size:11px;color:var(--text3);">${r.pension||6.5}%</div>` : '<div style="font-size:11px;color:var(--text3);">מחודש 7</div>'}
+        </td>
+        <td style="padding:10px 8px;text-align:left;">
+          <div style="font-weight:600;">₪${c.severance.toFixed(0)}</div>
+          ${c.severance > 0 ? `<div style="font-size:11px;color:var(--text3);">${c.severanceRate}%</div>` : '<div style="font-size:11px;color:var(--text3);">—</div>'}
         </td>
         <td style="padding:10px 8px;text-align:left;">
           <div style="font-weight:600;">₪${c.havraMonthly.toFixed(0)}</div>
-          ${r.havraDays ? `<div style="font-size:11px;color:var(--text3);">${r.havraDays}י×₪${r.havraRate}÷12</div>` : ''}
+          ${r.havraDays ? `<div style="font-size:11px;color:var(--text3);">${r.havraDays}י÷12</div>` : ''}
         </td>
         <td style="padding:10px 8px;text-align:left;">
           <div style="font-weight:700;color:var(--warn);">₪${c.total.toFixed(0)}</div>
@@ -1912,21 +1933,21 @@ function renderCostsScreen() {
           <th style="padding:8px;text-align:right;font-weight:600;">חודש</th>
           <th style="padding:8px;text-align:left;font-weight:600;">ברוטו כולל</th>
           <th style="padding:8px;text-align:left;font-weight:600;">ביטוח לאומי</th>
-          <th style="padding:8px;text-align:left;font-weight:600;">פנסיה + פיצויים</th>
+          <th style="padding:8px;text-align:left;font-weight:600;">פנסיה</th>
+          <th style="padding:8px;text-align:left;font-weight:600;">פיצויים</th>
           <th style="padding:8px;text-align:left;font-weight:600;">הבראה</th>
           <th style="padding:8px;text-align:left;font-weight:600;color:var(--warn);">הוצ׳ מעסיק</th>
           <th style="padding:8px;text-align:left;font-weight:600;color:var(--danger);">עלות כוללת</th>
         </tr>
       </thead>
-      <tbody>
-        ${rows}
-      </tbody>
+      <tbody>${rows}</tbody>
       <tfoot>
         <tr style="border-top:2px solid var(--border);background:var(--surface2);">
           <td style="padding:12px 8px;font-weight:700;">סה״כ מצטבר</td>
           <td style="padding:12px 8px;text-align:left;font-weight:700;">₪${cumGross.toLocaleString()}</td>
           <td style="padding:12px 8px;text-align:left;font-weight:700;">₪${cumBituach.toFixed(0)}</td>
           <td style="padding:12px 8px;text-align:left;font-weight:700;">₪${cumPension.toFixed(0)}</td>
+          <td style="padding:12px 8px;text-align:left;font-weight:700;">₪${cumSeverance.toFixed(0)}</td>
           <td style="padding:12px 8px;text-align:left;font-weight:700;">₪${cumHavra.toFixed(0)}</td>
           <td style="padding:12px 8px;text-align:left;font-weight:700;color:var(--warn);">₪${cumEmployer.toFixed(0)}</td>
           <td style="padding:12px 8px;text-align:left;font-weight:700;color:var(--danger);">₪${totalAll.toFixed(0)}</td>

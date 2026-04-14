@@ -94,11 +94,20 @@ async function signInWithEmail(email) {
 
 async function signOut() {
   if (!db) return;
-  await db.auth.signOut();
-  currentUser = null;
+  try {
+    // scope: 'local' — לא דורש lock, מנתק רק את הסשן המקומי
+    await Promise.race([
+      db.auth.signOut({ scope: 'local' }),
+      new Promise(r => setTimeout(r, 2000)) // timeout אחרי 2 שניות
+    ]);
+  } catch(e) { console.warn('signOut error:', e.message); }
+
+  // נקה מצב בכל מקרה
+  currentUser   = null;
   currentWorker = null;
   localStorage.removeItem('shakaron_premium');
-  if (typeof appData !== 'undefined') appData.profile = null;
+  localStorage.removeItem('shakaron_worker_id');
+  if (typeof appData !== 'undefined') { appData.profile = null; }
   updateAuthUI();
   showLoginScreen();
   safeToast('התנתקת בהצלחה');

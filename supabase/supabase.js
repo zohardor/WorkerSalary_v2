@@ -152,6 +152,7 @@ async function onUserLoggedIn() {
     if (typeof updateVacBar === 'function') updateVacBar();
     if (typeof renderMonthsList === 'function') renderMonthsList();
     if (typeof populateWorkerForm === 'function') populateWorkerForm();
+    if (typeof applyAdminUI === 'function') applyAdminUI();
   }, 200);
 }
 

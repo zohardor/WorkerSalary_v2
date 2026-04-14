@@ -336,16 +336,21 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const idx = ['screen-guide','screen-worker','screen-salary','screen-costs','screen-premium'].indexOf(id);
-  document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+  const navIds = ['screen-guide','screen-worker','screen-salary','screen-costs','screen-premium','screen-admin'];
+  const idx = navIds.indexOf(id);
+  if (idx >= 0) {
+    const tabs = document.querySelectorAll('.nav-tab');
+    if (tabs[idx]) tabs[idx].classList.add('active');
+  }
   if (id === 'screen-salary')  renderMonthsList();
-  if (id === 'screen-worker') renderAlerts();
+  if (id === 'screen-worker')  renderAlerts();
   if (id === 'screen-guide')   setTimeout(initAccordion, 50);
   if (id === 'screen-costs')   {
     if (!requirePremium('ניהול הוצאות מעסיק')) return;
     populateRatesForm(); renderCostsScreen(); updateHavraPreview();
   }
   if (id === 'screen-premium') renderPremiumScreen();
+  if (id === 'screen-admin')   loadAdminData();
 }
 
 function showPhase(phase) {
@@ -1248,6 +1253,132 @@ function addHavraToMonth() {
   toast(`✓ הבראה ₪${total.toLocaleString()} נוספה`);
   document.getElementById('havra-alert').style.display = 'none';
 }
+// ─────────────── ADMIN ───────────────
+
+function isAdmin() {
+  return currentUser?.app_metadata?.role === 'admin';
+}
+
+function applyAdminUI() {
+  const tab = document.getElementById('admin-nav-tab');
+  if (tab) tab.style.display = isAdmin() ? 'inline-flex' : 'none';
+}
+
+async function loadAdminData() {
+  if (!isAdmin() || !db) return;
+  try {
+    const { data: profiles } = await db
+      .from('profiles').select('*').order('created_at', { ascending: false });
+
+    const total  = profiles?.length || 0;
+    const premium = profiles?.filter(p => p.plan === 'premium').length || 0;
+    const week   = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+    const active = profiles?.filter(p => p.updated_at > week).length || 0;
+
+    setText('stat-total-users',   total);
+    setText('stat-premium-users', premium);
+    setText('stat-active-users',  active);
+
+    const [{ count: wCount }, { count: mCount }] = await Promise.all([
+      db.from('workers').select('*', { count: 'exact', head: true }),
+      db.from('months').select('*',  { count: 'exact', head: true }),
+    ]);
+    setText('stat-total-workers', wCount || 0);
+    setText('stat-total-months',  mCount || 0);
+
+    renderAdminUsersList(profiles || []);
+  } catch(e) { console.error('loadAdminData error:', e.message); }
+}
+
+function renderAdminUsersList(profiles) {
+  const container = document.getElementById('admin-users-list');
+  if (!profiles.length) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;">אין משתמשים</div>';
+    return;
+  }
+  container.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3);">
+      <th style="padding:8px;text-align:right;">מייל</th>
+      <th style="padding:8px;text-align:right;">תוכנית</th>
+      <th style="padding:8px;text-align:right;">פרימיום עד</th>
+      <th style="padding:8px;text-align:right;">נרשם</th>
+      <th style="padding:8px;text-align:right;">פעולות</th>
+    </tr></thead><tbody>
+    ${profiles.map(p => {
+      const isPrem  = p.plan === 'premium';
+      const until   = p.plan_until ? new Date(p.plan_until).toLocaleDateString('he-IL') : '—';
+      const created = p.created_at ? new Date(p.created_at).toLocaleDateString('he-IL') : '—';
+      const badge   = isPrem
+        ? `<span style="background:rgba(251,191,36,0.15);color:var(--warn);border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700;">⭐ פרימיום</span>`
+        : `<span style="background:var(--surface2);color:var(--text3);border-radius:10px;padding:2px 8px;font-size:11px;">חינמי</span>`;
+      return `<tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:10px 8px;font-weight:500;">${p.email||'—'}</td>
+        <td style="padding:10px 8px;">${badge}</td>
+        <td style="padding:10px 8px;color:var(--text2);">${until}</td>
+        <td style="padding:10px 8px;color:var(--text3);">${created}</td>
+        <td style="padding:10px 8px;">
+          ${!isPrem
+            ? `<button class="btn btn-sm" style="background:rgba(251,191,36,0.1);border-color:var(--warn);color:var(--warn);font-size:11px;" onclick="adminSetPremium('${p.email}',true)">⭐ שדרג</button>`
+            : `<button class="btn btn-sm" style="font-size:11px;" onclick="adminSetPremium('${p.email}',false)">↩ הסר</button>`}
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+}
+
+async function adminAddUser() {
+  if (!isAdmin() || !db) return;
+  const email    = v('admin-new-email').trim();
+  const password = v('admin-new-password');
+  const plan     = v('admin-new-plan');
+  const until    = v('admin-new-plan-until');
+  const msg      = document.getElementById('admin-add-msg');
+  if (!email || !password) { toast('נא למלא מייל וסיסמה'); return; }
+  if (password.length < 8)  { toast('סיסמה חייבת להיות לפחות 8 תווים'); return; }
+
+  msg.style.display = 'block';
+  msg.style.color   = 'var(--text2)';
+  msg.textContent   = 'יוצר משתמש...';
+
+  try {
+    const session = (await db.auth.getSession()).data.session;
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'apikey':        SUPABASE_ANON,
+        'Authorization': `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({
+        email, password, email_confirm: true,
+        app_metadata: plan === 'premium'
+          ? { plan: 'premium', plan_until: until || new Date(Date.now()+365*24*60*60*1000).toISOString() }
+          : { plan: 'free' },
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || JSON.stringify(data));
+
+    await db.from('profiles').upsert({ email, plan, plan_until: plan==='premium'?(until||null):null }, { onConflict:'email' });
+
+    msg.style.color = 'var(--success)';
+    msg.textContent = `✓ משתמש ${email} נוצר`;
+    setV('admin-new-email',''); setV('admin-new-password','');
+    setTimeout(() => loadAdminData(), 800);
+  } catch(e) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = '⚠️ ' + e.message;
+  }
+}
+
+async function adminSetPremium(email, enable) {
+  if (!isAdmin() || !db) return;
+  const until = enable ? new Date(Date.now()+365*24*60*60*1000).toISOString().split('T')[0] : null;
+  await db.from('profiles').upsert({ email, plan: enable?'premium':'free', plan_until: until }, { onConflict:'email' });
+  toast(enable ? `✓ ${email} — פרימיום` : `✓ הוסר פרימיום`);
+  setTimeout(() => loadAdminData(), 500);
+}
+
 // ─────────────── TERMINATION REPORT (דוח סיום) ───────────────
 
 function calcTermination() {

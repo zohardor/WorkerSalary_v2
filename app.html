@@ -638,6 +638,7 @@
     <button class="nav-tab" onclick="showScreen('screen-salary')">📅 ניהול חודשי</button>
     <button class="nav-tab" onclick="showScreen('screen-costs')">💼 הוצאות מעסיק 🔒</button>
     <button class="nav-tab" onclick="showScreen('screen-premium')" style="color:var(--warn);">⭐ פרימיום</button>
+    <button class="nav-tab" id="admin-nav-tab" onclick="showScreen('screen-admin')" style="display:none;color:var(--danger);">🛡️ אדמין</button>
   </div>
   <button class="sync-btn" id="auth-btn" onclick="showScreen('screen-login')" title="התחברות">👤 כניסה</button>
   <button class="sync-btn" onclick="syncAllToCloud()" title="סנכרן לענן" id="sync-cloud-btn" style="display:none;">☁️ סנכרן</button>
@@ -1397,6 +1398,72 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ══════════════ SCREEN: ADMIN ══════════════ -->
+  <div id="screen-admin" class="screen">
+    <div class="card">
+      <div class="card-title"><span class="icon">🛡️</span> לוח בקרה — אדמין</div>
+
+      <!-- סטטיסטיקות מהירות -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;" id="admin-stats-grid">
+        <div style="background:var(--surface2);border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:var(--accent);" id="stat-total-users">—</div>
+          <div style="font-size:12px;color:var(--text3);">משתמשים</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:var(--warn);" id="stat-premium-users">—</div>
+          <div style="font-size:12px;color:var(--text3);">פרימיום</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:var(--success);" id="stat-active-users">—</div>
+          <div style="font-size:12px;color:var(--text3);">פעילים (7 ימים)</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:var(--accent2);" id="stat-total-workers">—</div>
+          <div style="font-size:12px;color:var(--text3);">עובדות רשומות</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:var(--text2);" id="stat-total-months">—</div>
+          <div style="font-size:12px;color:var(--text3);">חודשים הוזנו</div>
+        </div>
+      </div>
+
+      <!-- הוספת משתמש -->
+      <div style="background:var(--surface2);border-radius:12px;padding:20px;margin-bottom:24px;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:16px;color:var(--text);">➕ הוספת משתמש חדש</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>אימייל</label>
+            <input type="email" id="admin-new-email" placeholder="user@example.com" />
+          </div>
+          <div class="form-group">
+            <label>סיסמה</label>
+            <input type="password" id="admin-new-password" placeholder="לפחות 8 תווים" />
+          </div>
+          <div class="form-group">
+            <label>תוכנית</label>
+            <select id="admin-new-plan">
+              <option value="free">חינמי</option>
+              <option value="premium">פרימיום</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>פרימיום עד</label>
+            <input type="date" id="admin-new-plan-until" />
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="adminAddUser()" style="margin-top:8px;">➕ צור משתמש</button>
+        <div id="admin-add-msg" style="margin-top:10px;font-size:13px;display:none;"></div>
+      </div>
+
+      <!-- רשימת משתמשים -->
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+        <span>👥 רשימת משתמשים</span>
+        <button class="btn btn-sm btn-outline" onclick="loadAdminData()">🔄 רענן</button>
+      </div>
+      <div id="admin-users-list" style="font-size:13px;color:var(--text3);">טוען...</div>
+    </div>
   </div>
 
 </div><!-- /main -->

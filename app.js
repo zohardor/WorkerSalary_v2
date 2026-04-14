@@ -1342,27 +1342,31 @@ async function adminAddUser() {
 
   try {
     const session = (await db.auth.getSession()).data.session;
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'apikey':        SUPABASE_ANON,
-        'Authorization': `Bearer ${session?.access_token}`,
-      },
-      body: JSON.stringify({
-        email, password, email_confirm: true,
-        app_metadata: plan === 'premium'
-          ? { plan: 'premium', plan_until: until || new Date(Date.now()+365*24*60*60*1000).toISOString() }
-          : { plan: 'free' },
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || JSON.stringify(data));
+    if (!session) throw new Error('לא מחובר');
 
-    await db.from('profiles').upsert({ email, plan, plan_until: plan==='premium'?(until||null):null }, { onConflict:'email' });
+    const res = await fetch(
+      `${SUPABASE_URL}/functions/v1/admin-create-user`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey':        SUPABASE_ANON,
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          plan,
+          plan_until: until || null,
+        }),
+      }
+    );
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || JSON.stringify(data));
 
     msg.style.color = 'var(--success)';
-    msg.textContent = `✓ משתמש ${email} נוצר`;
+    msg.textContent = `✓ משתמש ${email} נוצר בהצלחה (מאושר אוטומטית)`;
     setV('admin-new-email',''); setV('admin-new-password','');
     setTimeout(() => loadAdminData(), 800);
   } catch(e) {

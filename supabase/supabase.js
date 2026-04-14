@@ -95,19 +95,35 @@ async function signInWithEmail(email) {
 async function signOut() {
   if (!db) return;
   try {
-    // scope: 'local' — לא דורש lock, מנתק רק את הסשן המקומי
     await Promise.race([
       db.auth.signOut({ scope: 'local' }),
-      new Promise(r => setTimeout(r, 2000)) // timeout אחרי 2 שניות
+      new Promise(r => setTimeout(r, 2000))
     ]);
   } catch(e) { console.warn('signOut error:', e.message); }
 
-  // נקה מצב בכל מקרה
+  // נקה מצב מלא
   currentUser   = null;
   currentWorker = null;
   localStorage.removeItem('shakaron_premium');
   localStorage.removeItem('shakaron_worker_id');
-  if (typeof appData !== 'undefined') { appData.profile = null; }
+  localStorage.removeItem('shakaron_data');
+  // נקה סשן Supabase ידנית
+  localStorage.removeItem('sb-ndnucfbchdxyhvpazxwe-auth-token');
+
+  // נקה appData לחלוטין
+  if (typeof appData !== 'undefined') {
+    appData.worker  = {};
+    appData.months  = {};
+    appData.rates   = {};
+    appData.profile = null;
+  }
+
+  // רענן ממשק
+  if (typeof updateWorkerStats  === 'function') updateWorkerStats();
+  if (typeof renderMonthsList   === 'function') renderMonthsList();
+  if (typeof populateWorkerForm === 'function') populateWorkerForm();
+  if (typeof applyAdminUI       === 'function') applyAdminUI();
+
   updateAuthUI();
   showLoginScreen();
   safeToast('התנתקת בהצלחה');

@@ -300,6 +300,37 @@ function loadLocal() {
   } catch(e) {}
 }
 
+// ─────────────── TERMS MODAL ───────────────
+function checkTermsAndGoogle() {
+  if (!document.getElementById('terms-agree')?.checked) {
+    toast('יש להסכים לתנאי השימוש קודם');
+    return;
+  }
+  if (typeof signInWithGoogle === 'function') signInWithGoogle();
+}
+
+function checkTermsAndLogin() {
+  if (!document.getElementById('terms-agree')?.checked) {
+    toast('יש להסכים לתנאי השימוש קודם');
+    return;
+  }
+  if (typeof doLogin === 'function') doLogin();
+}
+
+function showTermsModal() {
+  document.getElementById('terms-modal').style.display = 'block';
+}
+
+function closeTermsModal() {
+  document.getElementById('terms-modal').style.display = 'none';
+}
+
+function agreeAndClose() {
+  document.getElementById('terms-agree').checked = true;
+  closeTermsModal();
+  toast('✓ הסכמת לתנאי השימוש');
+}
+
 // ─────────────── SCREENS ───────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));

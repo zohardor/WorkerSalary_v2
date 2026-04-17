@@ -1363,9 +1363,7 @@ function renderAdminUsersList(users) {
         <td style="padding:10px 8px;">
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
           ${u.role !== 'admin'
-            ? (!isPrem
-              ? `<button class="btn btn-sm" style="background:rgba(251,191,36,0.1);border-color:var(--warn);color:var(--warn);font-size:11px;" onclick="adminSetPremium('${u.email}',true)">⭐ שדרג</button>`
-              : `<button class="btn btn-sm" style="font-size:11px;" onclick="adminSetPremium('${u.email}',false)">↩ הסר</button>`)
+            ? `<button class="btn btn-sm" style="font-size:11px;background:rgba(91,127,255,0.1);border-color:var(--accent);color:var(--accent);" onclick="openAdminEdit('${u.email}','${u.plan||'free'}','${u.plan_until||''}')">✏️ ערוך</button>`
             : ''}
           <button class="btn btn-sm" style="font-size:11px;" onclick="adminSetPassword('${u.email}')">🔑 סיסמה</button>
           </div>
@@ -1405,6 +1403,38 @@ async function adminAddUser() {
   } catch(e) {
     msg.style.color = 'var(--danger)';
     msg.textContent = '⚠️ ' + e.message;
+  }
+}
+
+function openAdminEdit(email, plan, planUntil) {
+  document.getElementById('admin-edit-modal').style.display = 'flex';
+  document.getElementById('admin-edit-email-label').textContent = email;
+  document.getElementById('admin-edit-modal').dataset.email = email;
+  setV('admin-edit-plan', plan || 'free');
+  setV('admin-edit-plan-until', planUntil || '');
+}
+
+function closeAdminEdit() {
+  document.getElementById('admin-edit-modal').style.display = 'none';
+}
+
+async function adminSaveEdit() {
+  const email    = document.getElementById('admin-edit-modal').dataset.email;
+  const plan     = v('admin-edit-plan');
+  const until    = v('admin-edit-plan-until');
+  const enable   = plan === 'premium';
+  try {
+    await callAdminFunction({
+      action:     'set_premium',
+      email,
+      enable,
+      plan_until: enable ? (until || new Date(Date.now()+365*24*60*60*1000).toISOString().split('T')[0]) : null,
+    });
+    toast(`✓ ${email} עודכן ל${enable ? 'פרימיום' : 'חינמי'}`);
+    closeAdminEdit();
+    setTimeout(() => loadAdminData(), 500);
+  } catch(e) {
+    toast('⚠️ שגיאה: ' + e.message);
   }
 }
 

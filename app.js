@@ -1265,13 +1265,29 @@ function applyAdminUI() {
 }
 
 async function callAdminFunction(body) {
-  const session = (await db.auth.getSession()).data.session;
-  if (!session) throw new Error('לא מחובר');
+  // קח token מ-localStorage ישירות — עוקף lock של Supabase
+  let token = null;
+  try {
+    const raw = localStorage.getItem('sb-ndnucfbchdxyhvpazxwe-auth-token');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      token = parsed?.access_token ?? parsed?.session?.access_token ?? null;
+    }
+  } catch(e) {}
+
+  // fallback ל-getSession
+  if (!token) {
+    const session = (await db.auth.getSession()).data.session;
+    token = session?.access_token;
+  }
+
+  if (!token) throw new Error('לא מחובר');
+
   const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-create-user`, {
     method: 'POST',
     headers: {
       'Content-Type':  'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
+      'Authorization': `Bearer ${token}`,
       'apikey':        SUPABASE_ANON,
     },
     body: JSON.stringify(body),

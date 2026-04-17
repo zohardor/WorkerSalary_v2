@@ -1264,16 +1264,34 @@ function applyAdminUI() {
   if (tab) tab.style.display = isAdmin() ? 'inline-flex' : 'none';
 }
 
+async function callAdminFunction(body) {
+  const session = (await db.auth.getSession()).data.session;
+  if (!session) throw new Error('לא מחובר');
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-create-user`, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+      'apikey':        SUPABASE_ANON,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || JSON.stringify(data));
+  return data;
+}
+
 async function loadAdminData() {
   if (!isAdmin() || !db) return;
   try {
-    const { data: profiles } = await db
-      .from('profiles').select('*').order('created_at', { ascending: false });
+    const data = await callAdminFunction({ action: 'list_users' });
+    const users = data.users || [];
 
-    const total  = profiles?.length || 0;
-    const premium = profiles?.filter(p => p.plan === 'premium').length || 0;
-    const week   = new Date(Date.now() - 7*24*60*60*1000).toISOString();
-    const active = profiles?.filter(p => p.updated_at > week).length || 0;
+    // סטטיסטיקות
+    const total   = users.length;
+    const premium = users.filter(u => u.plan === 'premium').length;
+    const week    = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+    const active  = users.filter(u => u.last_sign_in > week).length;
 
     setText('stat-total-users',   total);
     setText('stat-premium-users', premium);
@@ -1286,40 +1304,55 @@ async function loadAdminData() {
     setText('stat-total-workers', wCount || 0);
     setText('stat-total-months',  mCount || 0);
 
-    renderAdminUsersList(profiles || []);
-  } catch(e) { console.error('loadAdminData error:', e.message); }
+    renderAdminUsersList(users);
+  } catch(e) {
+    console.error('loadAdminData error:', e.message);
+    toast('⚠️ שגיאה בטעינת נתוני אדמין: ' + e.message);
+  }
 }
 
-function renderAdminUsersList(profiles) {
+function renderAdminUsersList(users) {
   const container = document.getElementById('admin-users-list');
-  if (!profiles.length) {
+  if (!users.length) {
     container.innerHTML = '<div style="text-align:center;padding:20px;">אין משתמשים</div>';
     return;
   }
+  const sorted = [...users].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
   container.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
     <thead><tr style="border-bottom:1px solid var(--border);color:var(--text3);">
       <th style="padding:8px;text-align:right;">מייל</th>
       <th style="padding:8px;text-align:right;">תוכנית</th>
       <th style="padding:8px;text-align:right;">פרימיום עד</th>
+      <th style="padding:8px;text-align:right;">כניסה אחרונה</th>
       <th style="padding:8px;text-align:right;">נרשם</th>
       <th style="padding:8px;text-align:right;">פעולות</th>
     </tr></thead><tbody>
-    ${profiles.map(p => {
-      const isPrem  = p.plan === 'premium';
-      const until   = p.plan_until ? new Date(p.plan_until).toLocaleDateString('he-IL') : '—';
-      const created = p.created_at ? new Date(p.created_at).toLocaleDateString('he-IL') : '—';
+    ${sorted.map(u => {
+      const isPrem  = u.plan === 'premium';
+      const until   = u.plan_until ? new Date(u.plan_until).toLocaleDateString('he-IL') : '—';
+      const created = u.created_at ? new Date(u.created_at).toLocaleDateString('he-IL') : '—';
+      const lastIn  = u.last_sign_in ? new Date(u.last_sign_in).toLocaleDateString('he-IL') : 'טרם נכנס';
       const badge   = isPrem
         ? `<span style="background:rgba(251,191,36,0.15);color:var(--warn);border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700;">⭐ פרימיום</span>`
         : `<span style="background:var(--surface2);color:var(--text3);border-radius:10px;padding:2px 8px;font-size:11px;">חינמי</span>`;
+      const adminBadge = u.role === 'admin'
+        ? `<span style="background:rgba(248,113,113,0.15);color:var(--danger);border-radius:10px;padding:2px 6px;font-size:10px;margin-right:4px;">🛡️ אדמין</span>`
+        : '';
       return `<tr style="border-bottom:1px solid var(--border);">
-        <td style="padding:10px 8px;font-weight:500;">${p.email||'—'}</td>
+        <td style="padding:10px 8px;font-weight:500;">${adminBadge}${u.email||'—'}</td>
         <td style="padding:10px 8px;">${badge}</td>
         <td style="padding:10px 8px;color:var(--text2);">${until}</td>
+        <td style="padding:10px 8px;color:var(--text3);">${lastIn}</td>
         <td style="padding:10px 8px;color:var(--text3);">${created}</td>
         <td style="padding:10px 8px;">
-          ${!isPrem
-            ? `<button class="btn btn-sm" style="background:rgba(251,191,36,0.1);border-color:var(--warn);color:var(--warn);font-size:11px;" onclick="adminSetPremium('${p.email}',true)">⭐ שדרג</button>`
-            : `<button class="btn btn-sm" style="font-size:11px;" onclick="adminSetPremium('${p.email}',false)">↩ הסר</button>`}
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          ${u.role !== 'admin'
+            ? (!isPrem
+              ? `<button class="btn btn-sm" style="background:rgba(251,191,36,0.1);border-color:var(--warn);color:var(--warn);font-size:11px;" onclick="adminSetPremium('${u.email}',true)">⭐ שדרג</button>`
+              : `<button class="btn btn-sm" style="font-size:11px;" onclick="adminSetPremium('${u.email}',false)">↩ הסר</button>`)
+            : ''}
+          <button class="btn btn-sm" style="font-size:11px;" onclick="adminSetPassword('${u.email}')">🔑 סיסמה</button>
+          </div>
         </td>
       </tr>`;
     }).join('')}
@@ -1341,32 +1374,16 @@ async function adminAddUser() {
   msg.textContent   = 'יוצר משתמש...';
 
   try {
-    const session = (await db.auth.getSession()).data.session;
-    if (!session) throw new Error('לא מחובר');
-
-    const res = await fetch(
-      `${SUPABASE_URL}/functions/v1/admin-create-user`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey':        SUPABASE_ANON,
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          plan,
-          plan_until: until || null,
-        }),
-      }
-    );
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || JSON.stringify(data));
+    const data = await callAdminFunction({
+      action:     'create_user',
+      email,
+      password,
+      plan,
+      plan_until: until || null,
+    });
 
     msg.style.color = 'var(--success)';
-    msg.textContent = `✓ משתמש ${email} נוצר בהצלחה (מאושר אוטומטית)`;
+    msg.textContent = `✓ משתמש ${email} נוצר בהצלחה`;
     setV('admin-new-email',''); setV('admin-new-password','');
     setTimeout(() => loadAdminData(), 800);
   } catch(e) {
@@ -1375,12 +1392,28 @@ async function adminAddUser() {
   }
 }
 
+async function adminSetPassword(email) {
+  const newPass = prompt(`סיסמה חדשה עבור ${email}:\n(לפחות 8 תווים)`);
+  if (!newPass) return;
+  if (newPass.length < 8) { toast('סיסמה חייבת להיות לפחות 8 תווים'); return; }
+  try {
+    await callAdminFunction({ action: 'set_password', email, password: newPass });
+    toast(`✓ סיסמה עודכנה עבור ${email}`);
+  } catch(e) {
+    toast('⚠️ שגיאה: ' + e.message);
+  }
+}
+
 async function adminSetPremium(email, enable) {
   if (!isAdmin() || !db) return;
-  const until = enable ? new Date(Date.now()+365*24*60*60*1000).toISOString().split('T')[0] : null;
-  await db.from('profiles').upsert({ email, plan: enable?'premium':'free', plan_until: until }, { onConflict:'email' });
-  toast(enable ? `✓ ${email} — פרימיום` : `✓ הוסר פרימיום`);
-  setTimeout(() => loadAdminData(), 500);
+  try {
+    const until = enable ? new Date(Date.now()+365*24*60*60*1000).toISOString().split('T')[0] : null;
+    await callAdminFunction({ action: 'set_premium', email, enable, plan_until: until });
+    toast(enable ? `✓ ${email} — פרימיום` : `✓ הוסר פרימיום`);
+    setTimeout(() => loadAdminData(), 500);
+  } catch(e) {
+    toast('⚠️ שגיאה: ' + e.message);
+  }
 }
 
 // ─────────────── TERMINATION REPORT (דוח סיום) ───────────────

@@ -1407,9 +1407,10 @@ async function adminAddUser() {
 }
 
 function openAdminEdit(email, plan, planUntil) {
-  document.getElementById('admin-edit-modal').style.display = 'flex';
+  const modal = document.getElementById('admin-edit-modal');
+  modal.style.display = 'flex';
   document.getElementById('admin-edit-email-label').textContent = email;
-  document.getElementById('admin-edit-modal').dataset.email = email;
+  modal.dataset.email = email;
   setV('admin-edit-plan', plan || 'free');
   setV('admin-edit-plan-until', planUntil || '');
 }

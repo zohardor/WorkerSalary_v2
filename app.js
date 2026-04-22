@@ -874,11 +874,16 @@ function generatePDF() {
   const holBonus = parseFloat(w.holidayBonus)  || 0;
   const gross    = base + nSab * sabBonus + nHol * holBonus + exp + havra;
 
-  const bituachAmt  = (base * (r.bituach || 0)) / 100;
-  const pensionAmt  = (base * (r.pension  || 0)) / 100;
-  const havraDays   = calcHavraDays(w.startDate);
-  const havraAmt    = ((r.havraRate || 378) * havraDays) / 12;
-  const totalEmployer = bituachAmt + pensionAmt + havraAmt;
+  // חשב מספר חודש רצוף מתחילת העסקה (לצורך פנסיה ופיצויים)
+  const sortedKeys = Object.keys(appData.months).sort();
+  const monthNum   = sortedKeys.indexOf(key) + 1 || 99;
+
+  const bituachAmt   = (base * (r.bituach   || 0)) / 100;
+  const pensionAmt   = (base * (r.pension   || 6.5))  / 100;
+  const severanceAmt = (base * (r.severance || 8.33)) / 100;
+  const havraDays    = calcHavraDays(w.startDate);
+  const havraAmt     = ((r.havraRate || 378) * havraDays) / 12;
+  const totalEmployer = bituachAmt + pensionAmt + severanceAmt + havraAmt;
   const totalCost   = gross + totalEmployer;
 
   const dayNames = ['א','ב','ג','ד','ה','ו','ש'];
@@ -1011,7 +1016,8 @@ function generatePDF() {
 <div class="section-title">🏢 הוצאות מעסיק / Employer Costs</div>
 <table class="pay">
   <tr class="cost-row"><td>ביטוח לאומי / National Insurance (${r.bituach||0}%)</td><td>₪${bituachAmt.toFixed(0)}</td></tr>
-  <tr class="cost-row"><td>פנסיה / Pension (${r.pension||0}%)</td><td>₪${pensionAmt.toFixed(0)}</td></tr>
+  <tr class="cost-row"><td>פנסיה / Pension (${r.pension||6.5}%)</td><td>₪${pensionAmt.toFixed(0)}</td></tr>
+  <tr class="cost-row"><td>פיצויים / Severance (${r.severance||8.33}%)</td><td>₪${severanceAmt.toFixed(0)}</td></tr>
   <tr class="cost-row"><td>הבראה / Recreation (${havraDays} days/12)</td><td>₪${havraAmt.toFixed(0)}</td></tr>
   <tr class="employer"><td>סה"כ הוצאות מעסיק / Total Employer</td><td>₪${totalEmployer.toFixed(0)}</td></tr>
   <tr class="total-row"><td>עלות כוללת / Total Cost</td><td>₪${totalCost.toFixed(0)}</td></tr>
@@ -2046,27 +2052,12 @@ function populateRatesForm() {
 
 function calcEmployerCosts(grossSalary, monthNum = 99) {
   const r            = appData.rates || {};
-  const bituach      = (grossSalary * (r.bituach || 0)) / 100;
+  const bituach      = (grossSalary * (r.bituach   || 0))    / 100;
+  const pension      = (grossSalary * (r.pension   || 6.5))  / 100;
+  const severance    = (grossSalary * (r.severance || 8.33)) / 100;
   const havraMonthly = ((r.havraRate || 0) * calcHavraDays(appData.worker?.startDate)) / 12;
-
-  // פנסיה — מחודש 7 בלבד
-  const pension = monthNum >= 7 ? (grossSalary * (r.pension || 6.5)) / 100 : 0;
-
-  // פיצויים — לפי ותק
-  const totalMonths  = Object.keys(appData.months).length;
-  const isFirstYear  = totalMonths < 12;
-  let severance      = 0;
-  let severanceRate  = 0;
-  if (isFirstYear && monthNum >= 7) {
-    severanceRate = 6;
-    severance     = (grossSalary * 6) / 100;
-  } else if (!isFirstYear) {
-    severanceRate = r.severance || 8.33;
-    severance     = (grossSalary * severanceRate) / 100;
-  }
-
-  const total = bituach + pension + severance + havraMonthly;
-  return { bituach, pension, severance, severanceRate, havraMonthly, total };
+  const total        = bituach + pension + severance + havraMonthly;
+  return { bituach, pension, severance, severanceRate: r.severance || 8.33, havraMonthly, total };
 }
 
 // הצג הוצאות מעסיק בתוך מודל החודש

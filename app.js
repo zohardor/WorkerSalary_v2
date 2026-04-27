@@ -1,4 +1,4 @@
-// app.js – לוגיקה ראשית של שכרון
+// app.js – לוגיקה ראשית של מטפל
 
 // ─────────────── STATE ───────────────
 let appData = {
@@ -44,7 +44,7 @@ function createGuiTestPanel() {
   `;
   panel.innerHTML = `
     <div style="padding:16px 20px;border-bottom:1px solid #2d3352;display:flex;align-items:center;gap:12px;">
-      <div style="font-size:20px;font-weight:900;background:linear-gradient(135deg,#5b7fff,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">שכרון ✦ GUI Tests</div>
+      <div style="font-size:20px;font-weight:900;background:linear-gradient(135deg,#5b7fff,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">מטפל ✦ GUI Tests</div>
       <div id="gt-summary" style="font-size:13px;color:#5a6280;">לחץ הרץ...</div>
       <button onclick="runGuiTests()" style="margin-right:auto;padding:8px 20px;background:#5b7fff;color:#fff;border:none;border-radius:8px;font-family:'Heebo',sans-serif;font-weight:700;cursor:pointer;">▶ הרץ</button>
       <button onclick="toggleGuiTests()" style="padding:8px 14px;background:#1a1f2e;color:#9ba4c0;border:1px solid #2d3352;border-radius:8px;font-family:'Heebo',sans-serif;cursor:pointer;">✕ סגור</button>
@@ -919,62 +919,62 @@ function generatePDF() {
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;900&display=swap" rel="stylesheet"/>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Heebo',sans-serif;direction:rtl;background:#fff;color:#111;padding:24px;font-size:13px;max-width:720px;margin:0 auto}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:3px solid #5b7fff}
-  .header-logo{font-size:26px;font-weight:900;color:#5b7fff}
-  .header-sub{font-size:13px;color:#888;margin-top:2px}
-  .header-month .mo{font-size:20px;font-weight:900;color:#1a1f2e}
-  .header-month .issued{font-size:11px;color:#aaa;margin-top:2px}
-  .en{font-size:11px;color:#aaa;font-style:italic;direction:ltr}
-  .bilingual{display:flex;justify-content:space-between;align-items:baseline;line-height:2}
-  .top-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
-  .box{background:#f7f9ff;border:1px solid #dde3f5;border-radius:10px;padding:14px}
-  .box-title{font-size:10px;color:#5b7fff;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
-  .box .name{font-size:16px;font-weight:900;color:#1a1f2e;margin-bottom:6px}
-  .box p{font-size:12px;color:#555}
-  .section-title{font-size:13px;font-weight:700;color:#1a1f2e;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #eee}
-  table.pay{width:100%;border-collapse:collapse;margin-bottom:16px}
-  table.pay td{padding:7px 10px;border-bottom:1px solid #f0f0f0;font-size:13px}
+  body{font-family:'Heebo',sans-serif;direction:rtl;background:#fff;color:#111;padding:14px 18px;font-size:11.5px;max-width:720px;margin:0 auto}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;padding-bottom:10px;border-bottom:3px solid #5b7fff}
+  .header-logo{font-size:22px;font-weight:900;color:#5b7fff}
+  .header-sub{font-size:11px;color:#888;margin-top:2px}
+  .header-month .mo{font-size:17px;font-weight:900;color:#1a1f2e}
+  .header-month .issued{font-size:10px;color:#aaa;margin-top:2px}
+  .en{font-size:10px;color:#aaa;font-style:italic;direction:ltr}
+  .bilingual{display:flex;justify-content:space-between;align-items:baseline;line-height:1.7}
+  .top-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .box{background:#f7f9ff;border:1px solid #dde3f5;border-radius:8px;padding:10px}
+  .box-title{font-size:9px;color:#5b7fff;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px}
+  .box .name{font-size:14px;font-weight:900;color:#1a1f2e;margin-bottom:4px}
+  .box p{font-size:11px;color:#555}
+  .section-title{font-size:12px;font-weight:700;color:#1a1f2e;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid #eee}
+  table.pay{width:100%;border-collapse:collapse;margin-bottom:10px}
+  table.pay td{padding:4px 8px;border-bottom:1px solid #f0f0f0;font-size:11.5px}
   table.pay td:last-child{text-align:left;font-weight:600}
   tr.shab td{color:#e65100;background:#fff8f0}
   tr.holr td{color:#5e35b1;background:#f9f7ff}
   tr.havrar td{color:#0277bd;background:#e1f5fe}
-  tr.gross-row td{background:#eff6ff;font-weight:700;color:#1d4ed8;font-size:14px}
-  tr.total-row td{background:#5b7fff;color:#fff;font-weight:900;font-size:15px}
-  tr.cost-row td{color:#555;font-size:12px}
+  tr.gross-row td{background:#eff6ff;font-weight:700;color:#1d4ed8;font-size:12px}
+  tr.total-row td{background:#5b7fff;color:#fff;font-weight:900;font-size:13px}
+  tr.cost-row td{color:#555;font-size:11px}
   tr.employer td{color:#059669;background:#f0fdf4}
-  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:8px}
-  .cal-head{text-align:center;font-size:10px;font-weight:700;color:#888;padding:4px}
-  .day{text-align:center;padding:5px 2px;border-radius:5px;font-size:11px;border:1px solid #eee;min-height:26px}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:6px}
+  .cal-head{text-align:center;font-size:9px;font-weight:700;color:#888;padding:2px}
+  .day{text-align:center;padding:3px 1px;border-radius:4px;font-size:10px;border:1px solid #eee;min-height:20px}
   .wsab{background:#fff3e0;color:#e65100;border-color:#f97316;font-weight:700}
   .whol{background:#ede7f6;color:#5e35b1;border-color:#818cf8;font-weight:700}
   .wcustom{background:#e8f5e9;color:#2e7d32;border-color:#66bb6a;font-weight:700}
   .sat{color:#f97316;border-color:#ffe0cc}
   .hol{color:#818cf8;border-color:#e0e0ff}
-  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:#555;margin-bottom:16px}
-  .swatch{width:12px;height:12px;border-radius:2px;display:inline-block;margin-left:4px}
-  .vac-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-  .vac-box{border-radius:8px;padding:10px;border:1px solid #dde3f5}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:9px;color:#555;margin-bottom:8px}
+  .swatch{width:10px;height:10px;border-radius:2px;display:inline-block;margin-left:3px}
+  .vac-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .vac-box{border-radius:6px;padding:8px;border:1px solid #dde3f5}
   .vac-box.vac{background:#f0fdf4;border-color:#bbf7d0}
   .vac-box.hol{background:#f5f3ff;border-color:#ddd6fe}
-  .vb-title{font-size:10px;color:#888;font-weight:700;margin-bottom:6px}
-  .vb-val{font-size:18px;font-weight:900}
+  .vb-title{font-size:9px;color:#888;font-weight:700;margin-bottom:4px}
+  .vb-val{font-size:16px;font-weight:900}
   .vb-val.green{color:#059669}
   .vb-val.purple{color:#7c3aed}
-  .vb-sub{font-size:11px;color:#888;margin-top:2px}
-  .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:16px}
-  .sig-box{border-top:2px solid #333;padding-top:10px;text-align:center}
-  .sig-space{height:40px}
-  .footer{text-align:center;font-size:10px;color:#bbb;margin-top:20px;border-top:1px solid #f0f0f0;padding-top:12px}
-  .print-btn{display:block;margin:0 auto 20px;padding:10px 32px;background:#5b7fff;color:#fff;border:none;border-radius:8px;font-size:14px;font-family:'Heebo',sans-serif;font-weight:700;cursor:pointer}
-  @media print{.print-btn{display:none}@page{size:A4 portrait;margin:12mm}}
+  .vb-sub{font-size:10px;color:#888;margin-top:1px}
+  .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-top:12px}
+  .sig-box{border-top:2px solid #333;padding-top:8px;text-align:center}
+  .sig-space{height:30px}
+  .footer{text-align:center;font-size:9px;color:#bbb;margin-top:12px;border-top:1px solid #f0f0f0;padding-top:8px}
+  .print-btn{display:block;margin:0 auto 14px;padding:8px 28px;background:#5b7fff;color:#fff;border:none;border-radius:8px;font-size:13px;font-family:'Heebo',sans-serif;font-weight:700;cursor:pointer}
+  @media print{.print-btn{display:none}@page{size:A4 portrait;margin:8mm}body{padding:0;font-size:11px}}
 </style>
 </head>
 <body>
 <button class="print-btn" onclick="window.print()">🖨️ הדפס / שמור PDF</button>
 <div class="header">
   <div>
-    <div class="header-logo">שכרון ✦</div>
+    <div class="header-logo">מטפל ✦</div>
     <div class="header-sub">תלוש שכר רשמי &nbsp;|&nbsp; <span class="en">Official Pay Slip</span></div>
   </div>
   <div class="header-month">
@@ -1051,7 +1051,7 @@ function generatePDF() {
     <div class="sig-box"><div class="sig-space"></div><div style="font-size:12px;font-weight:600;">חתימת העובדת / Employee</div><div style="font-size:11px;color:#aaa;margin-top:6px;">קיבלתי שכרי / Received in full</div></div>
   </div>
 </div>
-<div class="footer">הופק ע"י שכרון ✦ • Generated by Shakaron • ${new Date().toLocaleDateString('he-IL')}</div>
+<div class="footer">הופק ע"י מטפל ✦ • Generated by Metapel • ${new Date().toLocaleDateString('he-IL')}</div>
 </body></html>`;
 
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
@@ -1112,7 +1112,7 @@ function exportJSON() {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'shakaron_' + new Date().toISOString().slice(0,10) + '.json';
+  a.download = 'metapel_' + new Date().toISOString().slice(0,10) + '.json';
   a.click();
   toast('נתונים יוצאו ✓');
 }
@@ -1154,7 +1154,7 @@ async function syncGist() {
   const ghToken = localStorage.getItem('gh_token');
   const payload = { worker: appData.worker, months: appData.months, synced: new Date().toISOString() };
   const body = {
-    description: 'Shakaron – שכרון ניהול שכר עובדת',
+    description: 'Metapel – מטפל ניהול שכר עובדת',
     public: false,
     files: { 'shakaron_data.json': { content: JSON.stringify(payload, null, 2) } }
   };
@@ -1681,7 +1681,7 @@ function generateTerminationPDF() {
 <body>
 <button class="print-btn" onclick="window.print()">🖨️ הדפס / שמור PDF</button>
 <h1>דוח סיום התקשרות</h1>
-<div class="sub">שכרון ✦ — ${new Date().toLocaleDateString('he-IL')}</div>
+<div class="sub">מטפל ✦ — ${new Date().toLocaleDateString('he-IL')}</div>
 <div class="grid">
   <div class="box">
     <div class="box-title">פרטי עובדת</div>
@@ -1711,7 +1711,7 @@ function generateTerminationPDF() {
   <div class="sig-box"><div>חתימת המעסיק</div><br/><br/><div>תאריך: ___________</div></div>
   <div class="sig-box"><div>חתימת העובדת</div><br/><br/><div>קיבלתי את מלוא הסכום המגיע לי</div></div>
 </div>
-<div class="footer">הופק ע"י שכרון ✦ • ${new Date().toLocaleDateString('he-IL')} • אינו מהווה ייעוץ משפטי</div>
+<div class="footer">הופק ע"י מטפל ✦ • ${new Date().toLocaleDateString('he-IL')} • אינו מהווה ייעוץ משפטי</div>
 </body></html>`;
 
   const blob = new Blob([html], {type:'text/html;charset=utf-8'});
@@ -1996,9 +1996,9 @@ async function syncSignupsToGist(signups) {
   if (!token) return;
   const gistId = localStorage.getItem('gh_signups_gist_id');
   const body = {
-    description: 'שכרון – רשימת הרשמות פרימיום',
+    description: 'מטפל – רשימת הרשמות פרימיום',
     public: false,
-    files: { 'shakaron_signups.json': { content: JSON.stringify(signups, null, 2) } }
+    files: { 'metapel_signups.json': { content: JSON.stringify(signups, null, 2) } }
   };
   try {
     let url = 'https://api.github.com/gists', method = 'POST';

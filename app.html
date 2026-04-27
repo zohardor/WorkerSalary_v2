@@ -3,97 +3,108 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#1a1f2e" />
+  <meta name="theme-color" content="#12100e" />
   <meta name="description" content="מערכת ניהול שכר עובדת זרה" />
-  <!-- SHAKARON v2026-03-29 -->
-  <title>שכרון – ניהול שכר עובדת זרה</title>
+  <!-- METAPEL v2026-03-29 -->
+  <title>מטפל – ניהול שכר עובדת זרה</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Noto+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;900&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,400&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0f1117;
-      --surface: #1a1f2e;
-      --surface2: #232840;
-      --surface3: #2d3352;
-      --accent: #5b7fff;
-      --accent2: #a78bfa;
-      --success: #34d399;
-      --warn: #fbbf24;
-      --danger: #f87171;
-      --shabbat: #f97316;
-      --holiday: #818cf8;
-      --text: #e8eaf6;
-      --text2: #9ba4c0;
-      --text3: #5a6280;
-      --border: #2d3352;
-      --radius: 14px;
-      --shadow: 0 8px 32px rgba(0,0,0,0.4);
+      --bg:       #12100e;
+      --surface:  #1c1916;
+      --surface2: #252118;
+      --surface3: #2f2b20;
+      --accent:   #e8a050;
+      --accent2:  #d4785a;
+      --success:  #6fcf97;
+      --warn:     #f2c94c;
+      --danger:   #eb5757;
+      --shabbat:  #f97316;
+      --holiday:  #bb9af7;
+      --text:     #f0ebe2;
+      --text2:    #a89880;
+      --text3:    #6b5f50;
+      --border:   rgba(255,255,255,0.07);
+      --border2:  rgba(255,255,255,0.12);
+      --radius:   12px;
+      --shadow:   0 20px 60px rgba(0,0,0,0.6);
+      --glow:     0 0 0 1px rgba(232,160,80,0.15), 0 4px 20px rgba(232,160,80,0.08);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Heebo', sans-serif;
+      font-family: 'Rubik', sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
       direction: rtl;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 20% 0%, rgba(232,160,80,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(212,120,90,0.03) 0%, transparent 50%);
     }
 
     /* ── TOP NAV ── */
     .top-bar {
-      background: var(--surface);
+      background: rgba(18,16,14,0.85);
+      backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
-      padding: 0 20px;
+      padding: 0 24px;
       display: flex;
       align-items: center;
       gap: 16px;
-      height: 62px;
+      height: 60px;
       position: sticky;
       top: 0;
       z-index: 100;
     }
     .logo {
-      font-size: 22px;
+      font-family: 'Fraunces', serif;
+      font-size: 21px;
       font-weight: 900;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: -0.5px;
+      color: var(--accent);
+      letter-spacing: -0.3px;
       white-space: nowrap;
+      text-shadow: 0 0 30px rgba(232,160,80,0.3);
     }
     .nav-tabs {
       display: flex;
-      gap: 4px;
+      gap: 2px;
       margin-right: auto;
     }
     .nav-tab {
-      padding: 8px 18px;
+      padding: 7px 16px;
       border-radius: 8px;
       border: none;
       background: transparent;
-      color: var(--text2);
-      font-size: 14px;
-      font-family: 'Heebo', sans-serif;
+      color: var(--text3);
+      font-size: 13.5px;
+      font-family: 'Rubik', sans-serif;
       cursor: pointer;
       transition: all .2s;
       font-weight: 500;
+      letter-spacing: 0.1px;
     }
-    .nav-tab.active, .nav-tab:hover {
+    .nav-tab:hover {
       background: var(--surface2);
-      color: var(--text);
+      color: var(--text2);
     }
-    .nav-tab.active { color: var(--accent); }
+    .nav-tab.active {
+      background: rgba(232,160,80,0.12);
+      color: var(--accent);
+    }
 
     .sync-btn {
-      padding: 8px 14px;
+      padding: 7px 14px;
       border-radius: 8px;
-      border: 1px solid var(--border);
+      border: 1px solid var(--border2);
       background: transparent;
-      color: var(--text2);
-      font-size: 13px;
+      color: var(--text3);
+      font-size: 12.5px;
+      font-family: 'Rubik', sans-serif;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -103,8 +114,7 @@
     .sync-btn:hover { border-color: var(--accent); color: var(--accent); }
 
     /* ── MAIN LAYOUT ── */
-    .main { padding: 24px 20px; max-width: 1100px; margin: 0 auto; min-height: calc(100vh - 62px); }
-
+    .main { padding: 28px 24px; max-width: 1100px; margin: 0 auto; min-height: calc(100vh - 60px); }
     .screen { display: none; }
     .screen.active { display: block; }
 
@@ -114,16 +124,29 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 24px;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .2s;
     }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(232,160,80,0.025) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .card:hover { border-color: var(--border2); }
     .card-title {
-      font-size: 16px;
+      font-family: 'Fraunces', serif;
+      font-size: 17px;
       font-weight: 700;
       color: var(--text);
-      margin-bottom: 18px;
+      margin-bottom: 20px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      letter-spacing: -0.2px;
     }
     .card-title .icon { font-size: 18px; }
 
@@ -137,12 +160,14 @@
     .form-group {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 7px;
     }
     .form-group label {
-      font-size: 13px;
-      color: var(--text2);
-      font-weight: 500;
+      font-size: 12px;
+      color: var(--text3);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     .form-group input, .form-group select, .form-group textarea {
       background: var(--surface2);
@@ -150,14 +175,16 @@
       border-radius: 8px;
       color: var(--text);
       font-size: 14px;
-      font-family: 'Heebo', sans-serif;
-      padding: 10px 12px;
-      transition: border-color .2s;
+      font-family: 'Rubik', sans-serif;
+      padding: 10px 13px;
+      transition: all .2s;
       outline: none;
       direction: rtl;
     }
     .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-      border-color: var(--accent);
+      border-color: rgba(232,160,80,0.5);
+      box-shadow: 0 0 0 3px rgba(232,160,80,0.08);
+      background: var(--surface3);
     }
     .form-group textarea { resize: vertical; min-height: 70px; }
 
@@ -166,29 +193,34 @@
       padding: 10px 20px;
       border-radius: 8px;
       border: none;
-      font-family: 'Heebo', sans-serif;
+      font-family: 'Rubik', sans-serif;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       transition: all .2s;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 7px;
+      letter-spacing: 0.1px;
     }
     .btn-primary {
       background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color: white;
+      color: #12100e;
+      box-shadow: 0 2px 12px rgba(232,160,80,0.25);
     }
-    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(232,160,80,0.35);
+    }
     .btn-outline {
       background: transparent;
-      border: 1px solid var(--border);
+      border: 1px solid var(--border2);
       color: var(--text2);
     }
     .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
-    .btn-success { background: var(--success); color: #0f1117; }
+    .btn-success { background: var(--success); color: #12100e; font-weight: 700; }
     .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
-    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
 
     /* ── STATS ROW ── */
     .stats-row {
@@ -201,30 +233,43 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 16px;
+      padding: 18px 16px;
       text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: all .2s;
     }
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      opacity: 0;
+      transition: opacity .2s;
+    }
+    .stat-card:hover::after { opacity: 1; }
     .stat-val {
-      font-size: 26px;
+      font-family: 'Fraunces', serif;
+      font-size: 28px;
       font-weight: 900;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: var(--accent);
+      line-height: 1.1;
     }
-    .stat-label { font-size: 12px; color: var(--text2); margin-top: 4px; }
+    .stat-label { font-size: 11.5px; color: var(--text3); margin-top: 5px; letter-spacing: 0.2px; }
 
     /* ── FILE UPLOAD ── */
     .file-drop {
-      border: 2px dashed var(--border);
+      border: 1px dashed var(--border2);
       border-radius: 10px;
       padding: 24px;
       text-align: center;
       cursor: pointer;
-      transition: border-color .2s;
+      transition: all .2s;
       color: var(--text3);
       font-size: 13px;
     }
-    .file-drop:hover { border-color: var(--accent); color: var(--text2); }
+    .file-drop:hover { border-color: var(--accent); color: var(--text2); background: rgba(232,160,80,0.03); }
     .file-drop input[type=file] { display: none; }
     .file-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
     .file-item {
@@ -243,13 +288,27 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
-    .cal-month-label { font-size: 18px; font-weight: 700; }
-    .cal-nav { background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 16px; }
+    .cal-month-label {
+      font-family: 'Fraunces', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .cal-nav {
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all .15s;
+    }
     .cal-nav:hover { border-color: var(--accent); color: var(--accent); }
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-    .cal-day-name { text-align: center; font-size: 11px; color: var(--text3); padding: 6px 0; font-weight: 600; }
+    .cal-day-name { text-align: center; font-size: 11px; color: var(--text3); padding: 6px 0; font-weight: 600; letter-spacing: 0.3px; }
     .cal-day {
       aspect-ratio: 1;
       display: flex;
@@ -259,64 +318,67 @@
       border-radius: 8px;
       font-size: 13px;
       cursor: pointer;
-      border: 2px solid transparent;
+      border: 1px solid transparent;
       transition: all .15s;
       position: relative;
       user-select: none;
       min-height: 40px;
+      color: var(--text2);
     }
-    .cal-day:hover { background: var(--surface3); }
+    .cal-day:hover { background: var(--surface3); color: var(--text); }
     .cal-day.empty { cursor: default; }
-    .cal-day.today { border-color: var(--accent); }
-    .cal-day.custom-vac { background:rgba(52,211,153,0.15);border:1.5px solid var(--success);color:var(--success);font-weight:700; }
-    .vac-dot { font-size:8px;line-height:1; }
-    .cal-day.shabbat-worked { background: rgba(249,115,22,0.25); border-color: var(--shabbat); color: var(--shabbat); font-weight: 700; }
-    .cal-day.holiday-worked { background: rgba(129,140,248,0.25); border-color: var(--holiday); color: var(--holiday); font-weight: 700; }
-    .cal-day.is-shabbat:not(.shabbat-worked) { color: var(--shabbat); opacity: 0.5; }
+    .cal-day.today { border-color: rgba(232,160,80,0.4); color: var(--accent); }
+    .cal-day.custom-vac { background: rgba(111,207,151,0.12); border-color: rgba(111,207,151,0.4); color: var(--success); font-weight:700; }
+    .vac-dot { font-size:8px; line-height:1; }
+    .cal-day.shabbat-worked { background: rgba(249,115,22,0.18); border-color: rgba(249,115,22,0.5); color: var(--shabbat); font-weight: 700; }
+    .cal-day.holiday-worked { background: rgba(187,154,247,0.18); border-color: rgba(187,154,247,0.5); color: var(--holiday); font-weight: 700; }
+    .cal-day.is-shabbat:not(.shabbat-worked) { color: var(--shabbat); opacity: 0.45; }
     .cal-day.is-holiday:not(.holiday-worked) { color: var(--holiday); opacity: 0.5; }
     .cal-day .hol-dot {
-      width: 5px; height: 5px;
+      width: 4px; height: 4px;
       border-radius: 50%;
       background: var(--holiday);
       position: absolute;
       bottom: 4px;
     }
-    .cal-legend { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
-    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
-    .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+    .cal-legend { display: flex; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text3); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
 
     /* ── MONTH LIST ── */
     .month-entry {
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 16px 20px;
-      margin-bottom: 12px;
+      padding: 15px 20px;
+      margin-bottom: 10px;
       display: flex;
       align-items: center;
       gap: 16px;
       cursor: pointer;
-      transition: border-color .2s;
+      transition: all .2s;
     }
-    .month-entry:hover { border-color: var(--accent); }
-    .month-entry .me-date { font-weight: 700; font-size: 15px; min-width: 90px; }
-    .month-entry .me-info { flex: 1; display: flex; gap: 20px; flex-wrap: wrap; }
+    .month-entry:hover { border-color: var(--border2); background: var(--surface3); transform: translateX(-2px); }
+    .month-entry .me-date { font-family: 'Fraunces', serif; font-weight: 700; font-size: 15px; min-width: 90px; color: var(--text); }
+    .month-entry .me-info { flex: 1; display: flex; gap: 8px; flex-wrap: wrap; }
     .me-chip {
-      background: var(--surface3);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
       border-radius: 20px;
       padding: 3px 10px;
       font-size: 12px;
-      color: var(--text2);
+      color: var(--text3);
     }
-    .me-chip.shab { background: rgba(249,115,22,0.2); color: var(--shabbat); }
-    .me-chip.hol { background: rgba(129,140,248,0.2); color: var(--holiday); }
-    .me-total { font-weight: 700; font-size: 17px; color: var(--success); white-space: nowrap; }
+    .me-chip.shab { background: rgba(249,115,22,0.1); border-color: rgba(249,115,22,0.2); color: var(--shabbat); }
+    .me-chip.hol { background: rgba(187,154,247,0.1); border-color: rgba(187,154,247,0.2); color: var(--holiday); }
+    .me-total { font-family: 'Fraunces', serif; font-weight: 900; font-size: 18px; color: var(--success); white-space: nowrap; }
 
     /* ── MODAL ── */
     .modal-bg {
       display: none;
       position: fixed; inset: 0;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
       z-index: 200;
       justify-content: center;
       align-items: flex-start;
@@ -326,13 +388,23 @@
     .modal-bg.open { display: flex; }
     .modal {
       background: var(--surface);
-      border: 1px solid var(--border);
+      border: 1px solid var(--border2);
       border-radius: 16px;
       padding: 28px;
       width: 100%;
       max-width: 700px;
       margin: auto;
       box-shadow: var(--shadow);
+      position: relative;
+    }
+    .modal::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.4;
+      border-radius: 16px 16px 0 0;
     }
     .modal-header {
       display: flex;
@@ -340,22 +412,22 @@
       align-items: center;
       margin-bottom: 24px;
     }
-    .modal-title { font-size: 18px; font-weight: 700; }
-    .modal-close { background: transparent; border: none; color: var(--text3); font-size: 22px; cursor: pointer; line-height: 1; }
+    .modal-title { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; letter-spacing: -0.2px; }
+    .modal-close { background: transparent; border: none; color: var(--text3); font-size: 22px; cursor: pointer; line-height: 1; transition: color .15s; }
     .modal-close:hover { color: var(--danger); }
     .modal-footer { margin-top: 24px; display: flex; gap: 10px; justify-content: flex-end; }
 
     /* ── VACATION TRACKER ── */
-    .vacation-bar { background: var(--surface2); border-radius: 8px; height: 8px; margin-top: 6px; overflow: hidden; }
-    .vacation-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .4s; }
+    .vacation-bar { background: var(--surface2); border-radius: 8px; height: 6px; margin-top: 6px; overflow: hidden; }
+    .vacation-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .5s ease; }
 
     /* ── TOAST ── */
     #toast {
       position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 10px 20px; font-size: 14px;
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 10px; padding: 10px 20px; font-size: 14px;
       z-index: 999; opacity: 0; transition: opacity .3s;
-      pointer-events: none;
+      pointer-events: none; font-family: 'Rubik', sans-serif;
     }
     #toast.show { opacity: 1; }
 
@@ -366,7 +438,7 @@
       color: #111;
       padding: 40px;
       border-radius: 8px;
-      font-family: 'Heebo', sans-serif;
+      font-family: 'Rubik', sans-serif;
       direction: rtl;
       max-width: 750px;
       margin: 0 auto;
@@ -477,7 +549,7 @@
       background: transparent;
       color: var(--text2);
       font-size: 13px;
-      font-family: 'Heebo', sans-serif;
+      font-family: 'Rubik', sans-serif;
       font-weight: 600;
       cursor: pointer;
       transition: all .2s;
@@ -631,7 +703,7 @@
 <body>
 
 <div class="top-bar">
-  <div class="logo">שכרון ✦</div>
+  <div class="logo">מטפל ✦</div>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showScreen('screen-guide')">📖 מדריך</button>
     <button class="nav-tab" onclick="showScreen('screen-worker')">👤 פרטי עובדת</button>
@@ -1116,7 +1188,7 @@
                 <div class="chk">☐ שכר בסיס + תוספות שבת / חג</div>
                 <div class="chk">☐ הפקד לחשבון הבנק של העובדת</div>
                 <div class="chk">☐ שלם ביטוח לאומי (עד ה-15)</div>
-                <div class="chk">☐ תעד בשכרון (מסך "ניהול חודשי")</div>
+                <div class="chk">☐ תעד במטפל (מסך "ניהול חודשי")</div>
               </div>
               <div class="tl-tip">📲 השתמש בלוח השנה לסימון שבתות וחגים</div>
             </div>
@@ -1161,7 +1233,7 @@
                 <div class="chk">☐ התחל תהליך 3 חודשים לפני פקיעה</div>
                 <div class="chk">☐ הגש בקשת הארכה לרשות האוכלוסין</div>
                 <div class="chk">☐ צרף הצהרת המשך העסקה</div>
-                <div class="chk">☐ עדכן תאריך בשכרון (מסך "פרטי עובדת")</div>
+                <div class="chk">☐ עדכן תאריך במטפל (מסך "פרטי עובדת")</div>
               </div>
               <div class="tl-tip">⚠️ עבודה עם ויזה פגת תוקף = קנס כבד על המעסיק!</div>
             </div>
@@ -1298,7 +1370,7 @@
     <!-- Hero -->
     <div style="text-align:center;padding:32px 20px 24px;background:linear-gradient(160deg,rgba(91,127,255,0.12),rgba(167,139,250,0.08));border-radius:var(--radius);border:1px solid var(--border);margin-bottom:24px;">
       <div style="font-size:36px;margin-bottom:8px;">⭐</div>
-      <div style="font-size:26px;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;">שכרון פרימיום</div>
+      <div style="font-size:26px;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;">מטפל פרימיום</div>
       <div style="font-size:15px;color:var(--text2);max-width:480px;margin:0 auto;line-height:1.6;">ניהול מקצועי ומלא של העסקת עובדת זרה — חסכו זמן, הימנעו מטעויות, תישארו מסודרים</div>
     </div>
 

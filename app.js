@@ -886,24 +886,10 @@ function generatePDF() {
   const totalEmployer = bituachAmt + pensionAmt + severanceAmt + havraAmt;
   const totalCost   = gross + totalEmployer;
 
-  const dayNames = ['א','ב','ג','ד','ה','ו','ש'];
-  let calCells = dayNames.map(d => `<div class="cal-head">${d}</div>`).join('');
-  for (let i = 0; i < firstDay; i++) calCells += '<div></div>';
-  for (let d = 1; d <= daysInMonth; d++) {
-    const ds = `${yr}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isSat      = isShabbat(ds);
-    const holInfo    = getHolidayInfo(ds, nationalities);
-    const wSab       = calState.workedShabbats.has(ds);
-    const wHol       = calState.workedHolidays.has(ds);
-    const wCustomHol = calState.customVacDays.has(ds);  // תיקון 2
-    let cls = 'day';
-    if      (wSab)        cls += ' wsab';
-    else if (wHol)        cls += ' whol';
-    else if (wCustomHol)  cls += ' wcustom';  // חג מותאם
-    else if (isSat)       cls += ' sat';
-    else if (holInfo)     cls += ' hol';
-    calCells += `<div class="${cls}" title="${wCustomHol ? 'חג מותאם' : (holInfo?.name || '')}">${d}</div>`;
-  }
+  const fmtD = ds => { const p = ds.split('-'); return `${parseInt(p[2])}/${parseInt(p[1])}`; };
+  const listD = set => [...set].sort().map(fmtD).join(', ');
+  const sabDates = listD(calState.workedShabbats);
+  const holDates = listD(new Set([...calState.workedHolidays, ...calState.customVacDays]));
 
   const holUsed = calcHolUsed(parseInt(yr));
   const vacUsed = calcTotalVacUsed();
@@ -919,139 +905,74 @@ function generatePDF() {
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;900&display=swap" rel="stylesheet"/>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Heebo',sans-serif;direction:rtl;background:#fff;color:#111;padding:24px;font-size:13px;max-width:720px;margin:0 auto}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:3px solid #5b7fff}
-  .header-logo{font-size:26px;font-weight:900;color:#5b7fff}
-  .header-sub{font-size:13px;color:#888;margin-top:2px}
-  .header-month .mo{font-size:20px;font-weight:900;color:#1a1f2e}
-  .header-month .issued{font-size:11px;color:#aaa;margin-top:2px}
-  .en{font-size:11px;color:#aaa;font-style:italic;direction:ltr}
-  .bilingual{display:flex;justify-content:space-between;align-items:baseline;line-height:2}
-  .top-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
-  .box{background:#f7f9ff;border:1px solid #dde3f5;border-radius:10px;padding:14px}
-  .box-title{font-size:10px;color:#5b7fff;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
-  .box .name{font-size:16px;font-weight:900;color:#1a1f2e;margin-bottom:6px}
-  .box p{font-size:12px;color:#555}
-  .section-title{font-size:13px;font-weight:700;color:#1a1f2e;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #eee}
-  table.pay{width:100%;border-collapse:collapse;margin-bottom:16px}
-  table.pay td{padding:7px 10px;border-bottom:1px solid #f0f0f0;font-size:13px}
-  table.pay td:last-child{text-align:left;font-weight:600}
-  tr.shab td{color:#e65100;background:#fff8f0}
-  tr.holr td{color:#5e35b1;background:#f9f7ff}
-  tr.havrar td{color:#0277bd;background:#e1f5fe}
-  tr.gross-row td{background:#eff6ff;font-weight:700;color:#1d4ed8;font-size:14px}
-  tr.total-row td{background:#5b7fff;color:#fff;font-weight:900;font-size:15px}
-  tr.cost-row td{color:#555;font-size:12px}
-  tr.employer td{color:#059669;background:#f0fdf4}
-  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:8px}
-  .cal-head{text-align:center;font-size:10px;font-weight:700;color:#888;padding:4px}
-  .day{text-align:center;padding:5px 2px;border-radius:5px;font-size:11px;border:1px solid #eee;min-height:26px}
-  .wsab{background:#fff3e0;color:#e65100;border-color:#f97316;font-weight:700}
-  .whol{background:#ede7f6;color:#5e35b1;border-color:#818cf8;font-weight:700}
-  .wcustom{background:#e8f5e9;color:#2e7d32;border-color:#66bb6a;font-weight:700}
-  .sat{color:#f97316;border-color:#ffe0cc}
-  .hol{color:#818cf8;border-color:#e0e0ff}
-  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:#555;margin-bottom:16px}
-  .swatch{width:12px;height:12px;border-radius:2px;display:inline-block;margin-left:4px}
-  .vac-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-  .vac-box{border-radius:8px;padding:10px;border:1px solid #dde3f5}
-  .vac-box.vac{background:#f0fdf4;border-color:#bbf7d0}
-  .vac-box.hol{background:#f5f3ff;border-color:#ddd6fe}
-  .vb-title{font-size:10px;color:#888;font-weight:700;margin-bottom:6px}
-  .vb-val{font-size:18px;font-weight:900}
-  .vb-val.green{color:#059669}
-  .vb-val.purple{color:#7c3aed}
-  .vb-sub{font-size:11px;color:#888;margin-top:2px}
-  .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:16px}
-  .sig-box{border-top:2px solid #333;padding-top:10px;text-align:center}
-  .sig-space{height:40px}
-  .footer{text-align:center;font-size:10px;color:#bbb;margin-top:20px;border-top:1px solid #f0f0f0;padding-top:12px}
-  .print-btn{display:block;margin:0 auto 20px;padding:10px 32px;background:#5b7fff;color:#fff;border:none;border-radius:8px;font-size:14px;font-family:'Heebo',sans-serif;font-weight:700;cursor:pointer}
-  @media print{.print-btn{display:none}@page{size:A4 portrait;margin:12mm}}
+  body{font-family:'Heebo',sans-serif;direction:rtl;background:#fff;color:#111;padding:24px;font-size:15px;max-width:760px;margin:0 auto;line-height:1.5}
+  .header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1a1f2e;padding-bottom:10px;margin-bottom:14px}
+  .logo{font-size:28px;font-weight:900;color:#1a1f2e}
+  .doc-title{font-size:15px;color:#555}
+  .mo{font-size:24px;font-weight:900;text-align:left}
+  .issued{font-size:12px;color:#777;text-align:left}
+  .emp{display:flex;flex-wrap:wrap;gap:6px 28px;background:#f4f6fb;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:14px}
+  .emp b{font-weight:700}
+  .emp .nm{font-size:18px;font-weight:900;width:100%}
+  h2{font-size:15px;font-weight:700;margin:0 0 6px;color:#1a1f2e}
+  table{width:100%;border-collapse:collapse;margin-bottom:16px}
+  td{padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:15px}
+  td:last-child{text-align:left;font-weight:700;white-space:nowrap}
+  td small{display:block;color:#666;font-size:12px;font-weight:400}
+  tr.total td{background:#1a1f2e;color:#fff;font-size:18px;font-weight:900;border:none}
+  table.cost td{font-size:13px;padding:5px 10px;color:#444}
+  table.cost tr.sum td{font-weight:700;color:#111;background:#f4f6fb}
+  .bal{display:flex;gap:12px;margin-bottom:16px}
+  .bal div{flex:1;border:1px solid #d7dbe6;border-radius:8px;padding:8px 12px;font-size:13px;color:#444}
+  .bal b{display:block;font-size:20px;color:#1a1f2e}
+  .confirm{font-size:13px;color:#444;margin:6px 0 4px}
+  .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:6px}
+  .sig-box{border-top:2px solid #333;padding-top:6px;text-align:center;font-size:13px;font-weight:600;margin-top:34px}
+  .footer{text-align:center;font-size:11px;color:#aaa;margin-top:14px}
+  .print-btn{display:block;margin:0 auto 18px;padding:10px 32px;background:#1a1f2e;color:#fff;border:none;border-radius:8px;font-size:14px;font-family:'Heebo',sans-serif;font-weight:700;cursor:pointer}
+  @media print{.print-btn{display:none}@page{size:A4 portrait;margin:12mm}body{padding:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style>
 </head>
 <body>
 <button class="print-btn" onclick="window.print()">🖨️ הדפס / שמור PDF</button>
 <div class="header">
-  <div>
-    <div class="header-logo">שכרון ✦</div>
-    <div class="header-sub">תלוש שכר רשמי &nbsp;|&nbsp; <span class="en">Official Pay Slip</span></div>
-  </div>
-  <div class="header-month">
-    <div class="mo">${monthLabel}</div>
-    <div class="issued">הופק / Issued: ${new Date().toLocaleDateString('he-IL')}</div>
-  </div>
+  <div><div class="logo">מטפל</div><div class="doc-title">תלוש שכר</div></div>
+  <div><div class="mo">${monthLabel}</div><div class="issued">הופק: ${new Date().toLocaleDateString('he-IL')}</div></div>
 </div>
-<div class="top-grid">
-  <div class="box">
-    <div class="box-title">פרטי עובדת / Employee Details</div>
-    <div class="name">${w.name||'—'}</div>
-    <p>
-      <span class="bilingual"><span>דרכון</span><span class="en">Passport: ${w.passport||'—'}</span></span>
-      <span class="bilingual"><span>תחילת עבודה</span><span class="en">Start: ${w.startDate||'—'}</span></span>
-      <span class="bilingual"><span>ויזה עד</span><span class="en">Visa until: ${w.visaDate||'—'}</span></span>
-      <span class="bilingual"><span>ותק</span><span class="en">Seniority: ${seniorityText}</span></span>
-    </p>
-  </div>
-  <div class="box">
-    <div class="box-title">תנאי שכר / Salary Terms</div>
-    <p>
-      <span class="bilingual"><span>שכר בסיס / Base</span><span>₪${base.toLocaleString()}</span></span>
-      <span class="bilingual"><span>תוספת שבת / Shabbat</span><span>₪${sabBonus}</span></span>
-      <span class="bilingual"><span>תוספת חג / Holiday</span><span>₪${holBonus}</span></span>
-      <span class="bilingual"><span>ב"ל / Nat. Ins.</span><span>${r.bituach||0}%</span></span>
-      <span class="bilingual"><span>פנסיה / Pension</span><span>${r.pension||0}%</span></span>
-    </p>
-  </div>
+<div class="emp">
+  <div class="nm">${w.name||'—'}</div>
+  <span>דרכון: <b>${w.passport||'—'}</b></span>
+  <span>תחילת עבודה: <b>${w.startDate||'—'}</b></span>
+  <span>ותק: <b>${seniorityText}</b></span>
+  <span>ויזה עד: <b>${w.visaDate||'—'}</b></span>
 </div>
-<div class="section-title">💰 פירוט תשלום / Payment Breakdown</div>
-<table class="pay">
-  <tr><td>שכר בסיס / Base Salary</td><td>₪${base.toLocaleString()}</td></tr>
-  ${nSab ? `<tr class="shab"><td>תוספת שבת / Shabbat (${nSab}×₪${sabBonus})</td><td>₪${(nSab*sabBonus).toLocaleString()}</td></tr>` : ''}
-  ${nHol ? `<tr class="holr"><td>תוספת חג / Holiday (${nHol}×₪${holBonus})</td><td>₪${(nHol*holBonus).toLocaleString()}</td></tr>` : ''}
-  ${exp   ? `<tr><td>החזר הוצאות / Expenses</td><td>₪${exp.toLocaleString()}</td></tr>` : ''}
-  ${havra ? `<tr class="havrar"><td>הבראה / Recreation</td><td>₪${havra.toLocaleString()}</td></tr>` : ''}
-  <tr class="total-row"><td>סה"כ לעובדת / Total to Employee</td><td>₪${gross.toLocaleString()}</td></tr>
+<h2>פירוט תשלום</h2>
+<table>
+  <tr><td>שכר בסיס</td><td>₪${base.toLocaleString()}</td></tr>
+  ${nSab ? `<tr><td>תוספת שבתות (${nSab} × ₪${sabBonus})<small>${sabDates}</small></td><td>₪${(nSab*sabBonus).toLocaleString()}</td></tr>` : ''}
+  ${nHol ? `<tr><td>תוספת חגים (${nHol} × ₪${holBonus})<small>${holDates}</small></td><td>₪${(nHol*holBonus).toLocaleString()}</td></tr>` : ''}
+  ${exp   ? `<tr><td>החזר הוצאות</td><td>₪${exp.toLocaleString()}</td></tr>` : ''}
+  ${havra ? `<tr><td>דמי הבראה</td><td>₪${havra.toLocaleString()}</td></tr>` : ''}
+  <tr class="total"><td>סה"כ לתשלום לעובדת</td><td>₪${gross.toLocaleString()}</td></tr>
 </table>
-<div class="section-title">🏢 הוצאות מעסיק / Employer Costs</div>
-<table class="pay">
-  <tr class="cost-row"><td>ביטוח לאומי / National Insurance (${r.bituach||0}%)</td><td>₪${bituachAmt.toFixed(0)}</td></tr>
-  <tr class="cost-row"><td>פנסיה / Pension (${r.pension||6.5}%)</td><td>₪${pensionAmt.toFixed(0)}</td></tr>
-  <tr class="cost-row"><td>פיצויים / Severance (${r.severance||8.33}%)</td><td>₪${severanceAmt.toFixed(0)}</td></tr>
-  <tr class="cost-row"><td>הבראה / Recreation (${havraDays} days/12)</td><td>₪${havraAmt.toFixed(0)}</td></tr>
-  <tr class="employer"><td>סה"כ הוצאות מעסיק / Total Employer</td><td>₪${totalEmployer.toFixed(0)}</td></tr>
-  <tr class="total-row"><td>עלות כוללת / Total Cost</td><td>₪${totalCost.toFixed(0)}</td></tr>
+<div class="bal">
+  <div>ימי חג נותרו<b>${holLeft} <span style="font-size:13px;font-weight:400">מתוך ${w.holTotal||0}</span></b></div>
+  <div>ימי חופשה נותרו (מצטבר)<b>${vacLeft}</b></div>
+</div>
+<h2>הוצאות מעסיק (לידיעה)</h2>
+<table class="cost">
+  <tr><td>ביטוח לאומי (${r.bituach||0}%)</td><td>₪${bituachAmt.toFixed(0)}</td></tr>
+  <tr><td>פנסיה (${r.pension||6.5}%)</td><td>₪${pensionAmt.toFixed(0)}</td></tr>
+  <tr><td>פיצויים (${r.severance||8.33}%)</td><td>₪${severanceAmt.toFixed(0)}</td></tr>
+  <tr><td>הבראה (${havraDays} ימים/12)</td><td>₪${havraAmt.toFixed(0)}</td></tr>
+  <tr class="sum"><td>עלות כוללת למעסיק</td><td>₪${totalCost.toFixed(0)}</td></tr>
 </table>
-<div class="section-title">📅 לוח שנה / Calendar – ${monthLabel}</div>
-<div class="cal">${calCells}</div>
-<div class="legend">
-  <span><span class="swatch wsab"></span>שבת שעבדה / Worked Shabbat</span>
-  <span><span class="swatch whol"></span>חג שעבדה / Worked Holiday</span>
+<div class="confirm">אני מאשר/ת קבלת שכר עבור ${monthLabel} בסך ₪${gross.toLocaleString()}</div>
+<div class="sig-grid">
+  <div class="sig-box">חתימת המעסיק &nbsp; תאריך: ________</div>
+  <div class="sig-box">חתימת העובדת &nbsp; תאריך: ________</div>
 </div>
-<div class="vac-row">
-  <div class="vac-box hol">
-    <div class="vb-title">🎉 ימי חג / Holidays</div>
-    <div class="vb-val purple">${holLeft}</div>
-    <div class="vb-sub">נותרו מתוך ${w.holTotal||0} (נוצלו ${holUsed})</div>
-  </div>
-  <div class="vac-box vac">
-    <div class="vb-title">🏖️ ימי חופשה / Vacation</div>
-    <div class="vb-val green">${vacLeft}</div>
-    <div class="vb-sub">נותרו מצטבר (נוצלו ${vacUsed} סה"כ)</div>
-  </div>
-</div>
-<div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee;">
-  <div class="section-title">✍️ אישור תשלום / Payment Confirmation</div>
-  <div style="font-size:12px;color:#555;margin-bottom:8px;">
-    אני מאשר/ת קבלת שכר עבור ${monthLabel} בסך ₪${gross.toLocaleString()}<br>
-    <span class="en">I confirm receipt of salary for ${monthLabel}: ₪${gross.toLocaleString()}</span>
-  </div>
-  <div class="sig-grid">
-    <div class="sig-box"><div class="sig-space"></div><div style="font-size:12px;font-weight:600;">חתימת המעסיק / Employer</div><div style="font-size:11px;color:#aaa;margin-top:6px;">תאריך / Date: ___________</div></div>
-    <div class="sig-box"><div class="sig-space"></div><div style="font-size:12px;font-weight:600;">חתימת העובדת / Employee</div><div style="font-size:11px;color:#aaa;margin-top:6px;">קיבלתי שכרי / Received in full</div></div>
-  </div>
-</div>
-<div class="footer">הופק ע"י שכרון ✦ • Generated by Shakaron • ${new Date().toLocaleDateString('he-IL')}</div>
+<div class="footer">הופק ע"י מטפל • metapel.app</div>
 </body></html>`;
 
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });

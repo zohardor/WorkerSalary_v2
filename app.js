@@ -967,31 +967,7 @@ function generatePDF() {
   .sig-space{height:40px}
   .footer{text-align:center;font-size:10px;color:#bbb;margin-top:20px;border-top:1px solid #f0f0f0;padding-top:12px}
   .print-btn{display:block;margin:0 auto 20px;padding:10px 32px;background:#5b7fff;color:#fff;border:none;border-radius:8px;font-size:14px;font-family:'Heebo',sans-serif;font-weight:700;cursor:pointer}
-    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
-  .two-col table.pay{margin-bottom:8px}
-  @media print{
-    .print-btn{display:none}
-    @page{size:A4 portrait;margin:8mm}
-    body{padding:0;font-size:11px;max-width:none}
-    .header{margin-bottom:8px;padding-bottom:6px}
-    .header-logo{font-size:20px}.header-month .mo{font-size:16px}
-    .top-grid{gap:8px;margin-bottom:8px}
-    .box{padding:8px}.box .name{font-size:14px;margin-bottom:3px}.box p{font-size:10.5px}
-    .bilingual{line-height:1.6}
-    .section-title{font-size:11.5px;margin-bottom:4px}
-    table.pay{margin-bottom:8px}
-    table.pay td{padding:3px 8px;font-size:11px}
-    tr.gross-row td,tr.total-row td{font-size:12px}
-    .cal{gap:2px;margin-bottom:4px}
-    .day{padding:2px;min-height:17px;font-size:10px}
-    .cal-head{padding:1px;font-size:9px}
-    .legend{margin-bottom:6px;gap:10px}
-    .vac-row{gap:6px;margin-bottom:6px;grid-template-columns:1fr}
-    .vac-box{padding:5px 8px}.vb-val{font-size:14px}.vb-title{margin-bottom:2px}
-    .sig-grid{margin-top:6px;gap:32px}.sig-space{height:24px}
-    .footer{margin-top:8px;padding-top:6px}
-    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  }
+  @media print{.print-btn{display:none}@page{size:A4 portrait;margin:12mm}}
 </style>
 </head>
 <body>
@@ -1028,8 +1004,6 @@ function generatePDF() {
     </p>
   </div>
 </div>
-<div class="two-col">
-<div>
 <div class="section-title">💰 פירוט תשלום / Payment Breakdown</div>
 <table class="pay">
   <tr><td>שכר בסיס / Base Salary</td><td>₪${base.toLocaleString()}</td></tr>
@@ -1039,8 +1013,6 @@ function generatePDF() {
   ${havra ? `<tr class="havrar"><td>הבראה / Recreation</td><td>₪${havra.toLocaleString()}</td></tr>` : ''}
   <tr class="total-row"><td>סה"כ לעובדת / Total to Employee</td><td>₪${gross.toLocaleString()}</td></tr>
 </table>
-</div>
-<div>
 <div class="section-title">🏢 הוצאות מעסיק / Employer Costs</div>
 <table class="pay">
   <tr class="cost-row"><td>ביטוח לאומי / National Insurance (${r.bituach||0}%)</td><td>₪${bituachAmt.toFixed(0)}</td></tr>
@@ -1050,19 +1022,12 @@ function generatePDF() {
   <tr class="employer"><td>סה"כ הוצאות מעסיק / Total Employer</td><td>₪${totalEmployer.toFixed(0)}</td></tr>
   <tr class="total-row"><td>עלות כוללת / Total Cost</td><td>₪${totalCost.toFixed(0)}</td></tr>
 </table>
-</div>
-</div>
-<div class="two-col">
-<div>
 <div class="section-title">📅 לוח שנה / Calendar – ${monthLabel}</div>
 <div class="cal">${calCells}</div>
 <div class="legend">
   <span><span class="swatch wsab"></span>שבת שעבדה / Worked Shabbat</span>
   <span><span class="swatch whol"></span>חג שעבדה / Worked Holiday</span>
 </div>
-</div>
-<div class="vac-wrap">
-<div class="section-title">🏖️ יתרות / Balances</div>
 <div class="vac-row">
   <div class="vac-box hol">
     <div class="vb-title">🎉 ימי חג / Holidays</div>
@@ -1075,9 +1040,7 @@ function generatePDF() {
     <div class="vb-sub">נותרו מצטבר (נוצלו ${vacUsed} סה"כ)</div>
   </div>
 </div>
-</div>
-</div>
-<div style="margin-top:12px;padding-top:8px;border-top:1px solid #eee;">
+<div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee;">
   <div class="section-title">✍️ אישור תשלום / Payment Confirmation</div>
   <div style="font-size:12px;color:#555;margin-bottom:8px;">
     אני מאשר/ת קבלת שכר עבור ${monthLabel} בסך ₪${gross.toLocaleString()}<br>
